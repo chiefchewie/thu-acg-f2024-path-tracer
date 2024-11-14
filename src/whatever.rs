@@ -12,6 +12,18 @@ impl Vec3 {
         Vec3 { x, y, z }
     }
 
+    pub fn x(&self) -> f64 {
+        self.x
+    }
+
+    pub fn y(&self) -> f64 {
+        self.y
+    }
+
+    pub fn z(&self) -> f64 {
+        self.z
+    }
+
     pub fn length(&self) -> f64 {
         self.length_squared().sqrt()
     }
@@ -34,6 +46,10 @@ impl Vec3 {
 
     pub fn normalized(&self) -> Vec3 {
         *self / self.length()
+    }
+
+    pub fn zeroes() -> Vec3 {
+        Vec3::new(0.0, 0.0, 0.0)
     }
 }
 
@@ -91,7 +107,6 @@ impl PartialEq for Vec3 {
         self.x == other.x && self.y == other.y && self.z == other.z
     }
 }
-
 
 #[derive(Debug, Clone, Copy)]
 pub struct Ray {
