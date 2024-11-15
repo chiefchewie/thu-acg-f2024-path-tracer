@@ -1,4 +1,9 @@
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::{
+    f64::consts::PI,
+    ops::{Add, Div, Mul, Neg, Sub},
+};
+
+use rand::Rng;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Vec3 {
@@ -48,8 +53,42 @@ impl Vec3 {
         *self / self.length()
     }
 
+    pub fn reflect(self, normal: Vec3) -> Vec3 {
+        self - (normal * 2.0 * self.dot(&normal))
+    }
+
+    pub fn near_zero(&self) -> bool {
+        let eps = 1e-3;
+        (self.x.abs() < eps) && (self.y.abs() < eps) && (self.z.abs() < eps)
+    }
+
     pub fn zeroes() -> Vec3 {
         Vec3::new(0.0, 0.0, 0.0)
+    }
+
+    pub fn random() -> Vec3 {
+        let mut rng = rand::thread_rng();
+        Vec3::new(rng.gen(), rng.gen(), rng.gen())
+    }
+
+    pub fn rand_range(min: f64, max: f64) -> Vec3 {
+        let mut rng = rand::thread_rng();
+        Vec3::new(
+            rng.gen_range(min..max),
+            rng.gen_range(min..max),
+            rng.gen_range(min..max),
+        )
+    }
+
+    pub fn random_dir() -> Vec3 {
+        let normal_distr = || {
+            let mut rng = rand::thread_rng();
+            let theta = 2.0 * PI * rng.gen::<f64>();
+            let rho = (-2.0 * (1.0 - rng.gen::<f64>()).ln()).sqrt();
+            rho * theta.cos()
+        };
+
+        Vec3::new(normal_distr(), normal_distr(), normal_distr()).normalized()
     }
 }
 

@@ -1,16 +1,55 @@
-use crate::vec3::Vec3;
+use crate::{hit_info::HitInfo, ray::Ray, vec3::Vec3};
 
-#[derive(Debug, Clone, Copy)]
+// TODO figure out if there's a way to make this abstrat and not have it suck
+// pub trait Material {
+//     // returns a bool if this material scatters or not
+//     // if scatter: then also contains the scattered ray and attenutation vector:w
+//     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray);
+// }
+
+#[derive(Debug, Clone, Copy, Default)]
+pub enum MaterialType {
+    #[default]
+    DIFFUSE,
+    SPECULAR, //REFRACTIVE
+}
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Material {
     albedo: Vec3,
+    mat_type: MaterialType,
 }
 
+// TODO smoothness param to blend between diffuse and specular?
 impl Material {
-    pub fn new(albedo: Vec3) -> Material {
-        Material { albedo }
+    pub fn new(albedo: Vec3, mat_type: MaterialType) -> Material {
+        Material { albedo, mat_type }
     }
 
-    pub fn alebdo(&self) -> Vec3 {
-        self.albedo
+    pub fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
+        match self.mat_type {
+            MaterialType::DIFFUSE => self.lambertian_scatter(ray, hit_info),
+            MaterialType::SPECULAR => self.metal_scatter(ray, hit_info),
+            // MaterialType::REFRACTIVE => self.refractive_scatter(ray, hit_info),
+        }
     }
+
+    // returns a bool if this material scatters or not
+    // if scatter: then also contains attenutation vector, scattered ray
+    fn lambertian_scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
+        let mut scatter_dir = Vec3::random_dir() + hit_info.normal;
+        if scatter_dir.near_zero() {
+            scatter_dir = hit_info.normal;
+        }
+
+        (true, self.albedo, Ray::new(hit_info.point, scatter_dir))
+    }
+
+    fn metal_scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
+        let refl = ray.direction().reflect(hit_info.normal);
+        (true, self.albedo, Ray::new(hit_info.point, refl))
+    }
+
+    // fn refractive_scatter(&self, ray:&Ray,hit_info:&HitInfo) -> (bool, Vec3, Ray) {
+
+    // }
 }
