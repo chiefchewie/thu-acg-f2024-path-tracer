@@ -45,7 +45,8 @@ impl Hittable for Sphere {
 
         let q = (r2 - d2).sqrt();
         let intersect = if l2 > r2 { s - q } else { s + q };
-        if intersect <= t_min || intersect >= t_max { // TODO this line is sussy
+        if intersect <= t_min || intersect >= t_max {
+            // TODO this condition is sussy
             hit_info.did_hit = false;
             return hit_info;
         }

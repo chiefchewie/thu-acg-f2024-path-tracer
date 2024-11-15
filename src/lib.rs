@@ -7,6 +7,7 @@ pub mod material;
 pub mod ray;
 pub mod sphere;
 pub mod vec3;
+pub mod camera;
 
 pub trait Hittable {
     fn intersects(&self, ray: &Ray, t_min: f64, t_max: f64) -> HitInfo;
@@ -27,6 +28,7 @@ impl World {
 }
 
 impl Hittable for World {
+    /// intersect with t in (t_min, t_max)
     fn intersects(&self, ray: &Ray, t_min: f64, t_max: f64) -> HitInfo {
         let mut closest_hit = HitInfo {
             dist: t_max,
