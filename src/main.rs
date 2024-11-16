@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use path_tracer::{
     camera::Camera,
-    material::{Material, MaterialType},
+    material::{DiffuseMaterial, Material, SpecularMaterial},
     sphere::Sphere,
     vec3::Vec3,
     World,
@@ -23,10 +23,10 @@ fn write_to_ppm(colors: &[Vec3], width: usize, height: usize) {
 
 fn main() {
     let mut world = World::new();
-    let mat_ground = Material::new(Vec3::new(0.8, 0.8, 0.0), MaterialType::DIFFUSE);
-    let mat_center = Material::new(Vec3::new(0.1, 0.2, 0.5), MaterialType::DIFFUSE);
-    let mat_left = Material::new(Vec3::new(0.8, 0.8, 0.8), MaterialType::SPECULAR);
-    let mat_right = Material::new(Vec3::new(0.8, 0.6, 0.2), MaterialType::SPECULAR);
+    let mat_ground = Material::DIFFUSE(DiffuseMaterial::new(0.8, 0.8, 0.0));
+    let mat_center = Material::DIFFUSE(DiffuseMaterial::new(0.1, 0.2, 0.5));
+    let mat_left = Material::SPECULAR(SpecularMaterial::new(0.8, 0.8, 0.8));
+    let mat_right = Material::SPECULAR(SpecularMaterial::new(0.8, 0.6, 0.2));
 
     world.add(Box::new(Sphere::new(
         100.0,
@@ -58,7 +58,7 @@ fn main() {
     camera.samples_per_pixel = 10;
     camera.max_depth = 5;
 
-    camera.vfov = 20.0;
+    camera.vfov = 90.0;
     camera.look_from = Vec3::new(-2., 2., 1.);
     camera.look_at = Vec3::new(0., 0., -1.);
     camera.up = Vec3::new(0., 1., 0.);

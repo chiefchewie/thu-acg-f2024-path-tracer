@@ -1,7 +1,6 @@
 use crate::{ray::Ray, vec3::Vec3, Hittable, World};
 use rand::Rng;
 
-// TODO camera props: look-at: vec3, right: vec3, up: vec3
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Camera {
     pub aspect_ratio: f64,
@@ -104,7 +103,11 @@ impl Camera {
 
         let info = world.intersects(ray, 0.0001, f64::INFINITY);
         if info.did_hit {
-            let (_, attenuation, scatter_ray) = info.mat.scatter(ray, &info);
+            let (_, attenuation, scatter_ray) = match info.mat {
+                crate::material::Material::DIFFUSE(material) => material.scatter(&info),
+                crate::material::Material::SPECULAR(material) => material.scatter(ray, &info),
+                crate::material::Material::REFRACTIVE(material) => material.scatter(ray, &info),
+            };
             Self::trace(&scatter_ray, depth - 1, world) * attenuation
         } else {
             Self::ambient_light(ray)
