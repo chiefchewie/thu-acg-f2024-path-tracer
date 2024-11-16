@@ -27,6 +27,12 @@ impl World {
     }
 }
 
+impl Default for World {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Hittable for World {
     /// intersect with t in (t_min, t_max)
     fn intersects(&self, ray: &Ray, t_min: f64, t_max: f64) -> HitInfo {
@@ -41,6 +47,6 @@ impl Hittable for World {
             }
         }
 
-        return closest_hit;
+        closest_hit
     }
 }

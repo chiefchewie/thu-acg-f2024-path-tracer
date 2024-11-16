@@ -1,5 +1,3 @@
-use core::ffi;
-
 use crate::{ray::Ray, vec3::Vec3, Hittable, World};
 use rand::Rng;
 
@@ -65,14 +63,14 @@ impl Camera {
         self.pixel00 = upperleft + (self.pixel_du + self.pixel_dv) * 0.5;
     }
 
-    pub fn render(&self, world: &World, pixels: &mut Vec<Vec3>) {
+    pub fn render(&self, world: &World, pixels: &mut [Vec3]) {
         for r in 0..self.image_height {
             for c in 0..self.image_width {
                 let mut color = Vec3::zeroes();
                 // TODO instead of multiple random rays per pixel, could try other Anti-Alias methods
                 for _ in 0..self.samples_per_pixel {
                     let ray = self.get_ray(r, c);
-                    color = color + self.trace(&ray, self.max_depth, &world);
+                    color = color + Self::trace(&ray, self.max_depth, world);
                 }
                 pixels[r * self.image_width + c] = color * self.pixel_sample_scale;
             }
@@ -99,15 +97,15 @@ impl Camera {
         Ray::new(self.center, ray_dir)
     }
 
-    fn trace(&self, ray: &Ray, depth: usize, world: &World) -> Vec3 {
-        if depth <= 0 {
+    fn trace(ray: &Ray, depth: usize, world: &World) -> Vec3 {
+        if depth == 0 {
             return Self::ambient_light(ray);
         }
 
         let info = world.intersects(ray, 0.0001, f64::INFINITY);
         if info.did_hit {
             let (_, attenuation, scatter_ray) = info.mat.scatter(ray, &info);
-            self.trace(&scatter_ray, depth - 1, world) * attenuation
+            Self::trace(&scatter_ray, depth - 1, world) * attenuation
         } else {
             Self::ambient_light(ray)
         }

@@ -8,7 +8,7 @@ use path_tracer::{
     World,
 };
 
-fn write_to_ppm(colors: &Vec<Vec3>, width: usize, height: usize) {
+fn write_to_ppm(colors: &[Vec3], width: usize, height: usize) {
     println!("P3\n{} {}\n255\n", width, height);
     for r in 0..height {
         for c in 0..width {
