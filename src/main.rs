@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use path_tracer::{
     camera::Camera,
     material::{DiffuseMaterial, Material, RefractiveMaterial, SpecularMaterial},
@@ -7,98 +5,98 @@ use path_tracer::{
     vec3::Vec3,
     World,
 };
-
-fn gamma_correct(x: f64) -> f64 {
-    if x > 0.0 {
-        x.sqrt()
-    } else {
-        0.0
-    }
-}
-
-fn write_to_ppm(colors: &[Vec3], width: usize, height: usize) {
-    println!("P3\n{} {}\n255\n", width, height);
-    for r in 0..height {
-        for c in 0..width {
-            let color = colors[r * width + c];
-            let r = gamma_correct(color.x()).clamp(0.0, 0.999);
-            let g = gamma_correct(color.y()).clamp(0.0, 0.999);
-            let b = gamma_correct(color.z()).clamp(0.0, 0.999);
-            println!(
-                "{} {} {}",
-                (r * 256.0) as usize,
-                (g * 256.0) as usize,
-                (b * 256.0) as usize,
-            );
-        }
-    }
-}
+use rand::Rng;
 
 fn main() {
     let mut world = World::new();
-    let mat_ground = Material::DIFFUSE(DiffuseMaterial::new(0.8, 0.8, 0.0));
-    let mat_center = Material::DIFFUSE(DiffuseMaterial::new(0.1, 0.2, 0.5));
-    let mat_left = Material::REFRACTIVE(RefractiveMaterial::new(1.5));
-    let mat_bubble = Material::REFRACTIVE(RefractiveMaterial::new(1.0 / 1.5));
-    let mat_right = Material::SPECULAR(SpecularMaterial::new(0.8, 0.6, 0.2));
 
+    let mat_ground = Material::DIFFUSE(DiffuseMaterial::new(0.5, 0.5, 0.5));
     world.add(Box::new(Sphere::new(
-        100.0,
-        Vec3::new(0.0, -100.5, -1.0),
+        1000.0,
+        Vec3::new(0.0, -1000.0, 0.0),
         mat_ground,
     )));
 
-    world.add(Box::new(Sphere::new(
-        0.5,
-        Vec3::new(0.0, 0.0, -1.2),
-        mat_center,
-    )));
+    let mat1 = Material::REFRACTIVE(RefractiveMaterial::new(1.5));
+    world.add(Box::new(Sphere::new(1.0, Vec3::new(0.0, 1.0, 0.0), mat1)));
 
-    world.add(Box::new(Sphere::new(
-        0.5,
-        Vec3::new(-1.0, 0.0, -1.0),
-        mat_left,
-    )));
+    let mat2 = Material::DIFFUSE(DiffuseMaterial::new(0.4, 0.2, 0.1));
+    world.add(Box::new(Sphere::new(1.0, Vec3::new(-4.0, 1.0, 0.0), mat2)));
 
-    world.add(Box::new(Sphere::new(
-        0.4,
-        Vec3::new(-1.0, 0.0, -1.0),
-        mat_bubble,
-    )));
+    let mat3 = Material::SPECULAR(SpecularMaterial::new(0.7, 0.6, 0.5));
+    world.add(Box::new(Sphere::new(1.0, Vec3::new(4.0, 1.0, 0.0), mat3)));
 
-    world.add(Box::new(Sphere::new(
-        0.5,
-        Vec3::new(1.0, 0.0, -1.0),
-        mat_right,
-    )));
+    let mut rng = rand::thread_rng();
+    for a in (-11..11).map(|x| x as f64) {
+        for b in (-11..11).map(|x| x as f64) {
+            let choose_mat = rng.gen::<f64>();
+            let center = Vec3::new(a + 0.9 * rng.gen::<f64>(), 0.2, b + 0.9 * rng.gen::<f64>());
+            if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
+                let sphere_material = if choose_mat < 0.8 {
+                    let albedo = Vec3::random() * Vec3::random();
+                    Material::DIFFUSE(DiffuseMaterial::from_rgb(albedo))
+                } else if choose_mat < 0.95 {
+                    let albedo = Vec3::rand_range(0.5, 1.0);
+                    Material::SPECULAR(SpecularMaterial::from_rgb(albedo))
+                } else {
+                    Material::REFRACTIVE(RefractiveMaterial::new(1.5))
+                };
+                world.add(Box::new(Sphere::new(0.2, center, sphere_material)));
+            }
+        }
+    }
+    // let mut world = World::new();
+    // let mat_ground = Material::DIFFUSE(DiffuseMaterial::new(0.8, 0.8, 0.0));
+    // let mat_center = Material::DIFFUSE(DiffuseMaterial::new(0.1, 0.2, 0.5));
+    // let mat_left = Material::REFRACTIVE(RefractiveMaterial::new(1.5));
+    // let mat_bubble = Material::REFRACTIVE(RefractiveMaterial::new(1.0 / 1.5));
+    // let mat_right = Material::SPECULAR(SpecularMaterial::new(0.8, 0.6, 0.2));
+
+    // world.add(Box::new(Sphere::new(
+    //     100.0,
+    //     Vec3::new(0.0, -100.5, -1.0),
+    //     mat_ground,
+    // )));
+
+    // world.add(Box::new(Sphere::new(
+    //     0.5,
+    //     Vec3::new(0.0, 0.0, -1.2),
+    //     mat_center,
+    // )));
+
+    // world.add(Box::new(Sphere::new(
+    //     0.5,
+    //     Vec3::new(-1.0, 0.0, -1.0),
+    //     mat_left,
+    // )));
+
+    // world.add(Box::new(Sphere::new(
+    //     0.4,
+    //     Vec3::new(-1.0, 0.0, -1.0),
+    //     mat_bubble,
+    // )));
+
+    // world.add(Box::new(Sphere::new(
+    //     0.5,
+    //     Vec3::new(1.0, 0.0, -1.0),
+    //     mat_right,
+    // )));
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
-    camera.image_width = 400;
-    camera.samples_per_pixel = 100;
+    camera.image_width = 1200;
+    camera.samples_per_pixel = 10;
     camera.max_depth = 10;
 
     camera.vfov = 20.0;
-    camera.look_from = Vec3::zeroes();
-    camera.look_from = Vec3::new(-2., 2., 1.);
-    camera.look_at = Vec3::new(0., 0., -1.);
-    camera.vup = Vec3::new(0., 1., 0.);
+    camera.look_from = Vec3::new(13.0, 2.0, 3.0);
+    camera.look_at = Vec3::new(0.0, 0.0, 0.0);
+    camera.vup = Vec3::new(0.0, 1.0, 0.0);
 
     camera.blur_strength = 0.5;
-    camera.focal_length = 3.4;
-    camera.defocus_angle = 10.0;
+    camera.focal_length = 10.0;
+    camera.defocus_angle = 0.6;
 
     camera.init();
-
-    let mut pixels = vec![Vec3::new(0.0, 0.0, 0.0); camera.width() * camera.height()];
-
-    let mut start = Instant::now();
-    dbg!("start render", start);
-    camera.render(&world, &mut pixels);
-    dbg!("finished render, took {:?} seconds", start.elapsed());
-
-    start = Instant::now();
-    dbg!("start write", start);
-    write_to_ppm(&pixels, camera.width(), camera.height());
-    dbg!("finished write, took {:?} seconds", start.elapsed());
+    camera.render(&world);
 }

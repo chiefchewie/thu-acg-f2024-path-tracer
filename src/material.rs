@@ -21,6 +21,10 @@ impl DiffuseMaterial {
         }
     }
 
+    pub fn from_rgb(rgb: Vec3) -> DiffuseMaterial {
+        DiffuseMaterial { albedo: rgb }
+    }
+
     pub fn scatter(&self, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
         let mut scatter_dir = Vec3::random_dir() + hit_info.normal;
         if scatter_dir.near_zero() {
@@ -46,6 +50,10 @@ impl SpecularMaterial {
         SpecularMaterial {
             albedo: Vec3::new(r, g, b),
         }
+    }
+
+    pub fn from_rgb(rgb: Vec3) -> SpecularMaterial {
+        SpecularMaterial { albedo: rgb }
     }
 
     pub fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray) {

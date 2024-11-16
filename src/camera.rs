@@ -1,6 +1,7 @@
-use std::f64::consts::PI;
+use std::{f64::consts::PI, fs::File, time::Instant};
 
 use crate::{ray::Ray, vec3::Vec3, Hittable, World};
+use image::{codecs::png::PngEncoder, ImageEncoder};
 use rand::Rng;
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -38,14 +39,6 @@ impl Camera {
         }
     }
 
-    pub fn width(&self) -> usize {
-        self.image_width
-    }
-
-    pub fn height(&self) -> usize {
-        self.image_height
-    }
-
     pub fn init(&mut self) {
         self.image_height = (self.image_width as f64 / self.aspect_ratio) as usize;
         self.pixel_sample_scale = 1.0 / self.samples_per_pixel as f64;
@@ -74,7 +67,9 @@ impl Camera {
         self.pixel00 = upperleft + (self.pixel_du + self.pixel_dv) * 0.5;
     }
 
-    pub fn render(&self, world: &World, pixels: &mut [Vec3]) {
+    pub fn render(&self, world: &World) {
+        let start = Instant::now();
+        let mut pixels: Vec<u8> = vec![0; self.image_width * self.image_height * 3];
         for r in 0..self.image_height {
             for c in 0..self.image_width {
                 let mut color = Vec3::zeroes();
@@ -83,8 +78,42 @@ impl Camera {
                     let ray = self.get_ray(r, c);
                     color = color + Self::trace(&ray, self.max_depth, world);
                 }
-                pixels[r * self.image_width + c] = color * self.pixel_sample_scale;
+                color = color * self.pixel_sample_scale;
+
+                let rbyte = (Self::gamma_correct(color.x()).clamp(0.0, 0.999) * 256.0) as u8;
+                let gbyte = (Self::gamma_correct(color.y()).clamp(0.0, 0.999) * 256.0) as u8;
+                let bbyte = (Self::gamma_correct(color.z()).clamp(0.0, 0.999) * 256.0) as u8;
+                let idx = r * self.image_width + c;
+                pixels[idx * 3] = rbyte;
+                pixels[idx * 3 + 1] = gbyte;
+                pixels[idx * 3 + 2] = bbyte;
             }
+        }
+        dbg!(start.elapsed().as_secs_f64());
+
+        let file = File::create("image.png");
+        match file {
+            Ok(ting) => {
+                let encoder = PngEncoder::new(ting);
+                match encoder.write_image(
+                    &pixels,
+                    self.image_width as u32,
+                    self.image_height as u32,
+                    image::ExtendedColorType::Rgb8,
+                ) {
+                    Ok(_) => {}
+                    Err(_) => panic!("error tryna write file"),
+                }
+            }
+            Err(_) => panic!("error tryna create file"),
+        }
+    }
+
+    fn gamma_correct(x: f64) -> f64 {
+        if x > 0.0 {
+            x.sqrt()
+        } else {
+            0.0
         }
     }
 
@@ -103,16 +132,17 @@ impl Camera {
     }
 
     fn get_ray(&self, r: usize, c: usize) -> Ray {
-        let blur = Self::random_offsets() * self.blur_strength;
+        let blur_offset = Self::random_offsets() * self.blur_strength;
         let sample_location = self.pixel00
-            + (self.pixel_dv * (r as f64 + blur.x()))
-            + (self.pixel_du * (c as f64 + blur.y()));
-            
-        let r = (self.defocus_angle / 2.0).to_radians().tan() * self.focal_length;
-        let du = self.right * r;
-        let dv = self.up * r;
+            + (self.pixel_dv * (r as f64 + blur_offset.x()))
+            + (self.pixel_du * (c as f64 + blur_offset.y()));
+
+        let radius = (self.defocus_angle / 2.0).to_radians().tan() * self.focal_length;
+        // let r = self.focal_length / self.fstop / 2.0;
+        let dof_offset_right = self.right * radius;
+        let dof_offset_up = self.up * radius;
         let p = Self::random_offsets();
-        let ray_origin = self.center + (du * p.x()) + (dv * p.y());
+        let ray_origin = self.center + (dof_offset_right * p.x()) + (dof_offset_up * p.y());
 
         let ray_dir = sample_location - ray_origin;
         Ray::new(ray_origin, ray_dir)
