@@ -1,9 +1,8 @@
-use std::{
-    f64::consts::PI,
-    ops::{Add, Div, Mul, Neg, Sub},
-};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use rand::Rng;
+
+use crate::utils::normal_dist;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Vec3 {
@@ -57,6 +56,13 @@ impl Vec3 {
         self - (normal * 2.0 * self.dot(&normal))
     }
 
+    pub fn refract(self, normal: Vec3, eta_ratio: f64) -> Vec3 {
+        let cos_theta = -self.dot(&normal).min(1.0);
+        let out_perp = (self + normal * cos_theta) * eta_ratio;
+        let out_parallel = normal * -(1.0 - out_perp.length_squared()).abs().sqrt();
+        out_perp + out_parallel
+    }
+
     pub fn near_zero(&self) -> bool {
         let eps = 1e-3;
         (self.x.abs() < eps) && (self.y.abs() < eps) && (self.z.abs() < eps)
@@ -81,14 +87,7 @@ impl Vec3 {
     }
 
     pub fn random_dir() -> Vec3 {
-        let normal_distr = || {
-            let mut rng = rand::thread_rng();
-            let theta = 2.0 * PI * rng.gen::<f64>();
-            let rho = (-2.0 * (1.0 - rng.gen::<f64>()).ln()).sqrt();
-            rho * theta.cos()
-        };
-
-        Vec3::new(normal_distr(), normal_distr(), normal_distr()).normalized()
+        Vec3::new(normal_dist(), normal_dist(), normal_dist()).normalized()
     }
 }
 

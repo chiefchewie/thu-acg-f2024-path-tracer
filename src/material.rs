@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use crate::{hit_info::HitInfo, ray::Ray, vec3::Vec3};
 
 // TODO figure out if there's a way to make this abstrat and not have it suck
@@ -25,7 +27,12 @@ impl DiffuseMaterial {
             scatter_dir = hit_info.normal;
         }
 
-        (true, self.albedo, Ray::new(hit_info.point, scatter_dir))
+        let eps = 1e-3;
+        (
+            true,
+            self.albedo,
+            Ray::new(hit_info.point + hit_info.normal * eps, scatter_dir),
+        )
     }
 }
 
@@ -43,18 +50,56 @@ impl SpecularMaterial {
 
     pub fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
         let refl = ray.direction().reflect(hit_info.normal);
-        (true, self.albedo, Ray::new(hit_info.point, refl))
+        let eps = 1e-3;
+        (
+            true,
+            self.albedo,
+            Ray::new(hit_info.point + hit_info.normal * eps, refl),
+        )
     }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct RefractiveMaterial {
-    _index: f64,
+    refraction_index: f64,
 }
 
 impl RefractiveMaterial {
-    pub fn scatter(&self, _ray: &Ray, _hit_info: &HitInfo) -> (bool, Vec3, Ray) {
-        todo!()
+    pub fn new(refraction_index: f64) -> RefractiveMaterial {
+        RefractiveMaterial { refraction_index }
+    }
+
+    pub fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
+        let mut rng = rand::thread_rng();
+        let eps = 1e-3;
+        let attenuation = Vec3::new(1.0, 1.0, 1.0);
+        let ri = if hit_info.front_face {
+            1.0 / self.refraction_index
+        } else {
+            self.refraction_index
+        };
+
+        let cos_theta = (-ray.direction()).dot(&hit_info.normal).min(1.0);
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+
+        let sign: f64; // if refracting, need to negate normal when calculating the shadow acne offset
+        let cannot_refract = ri * sin_theta > 1.0;
+        let dir = if cannot_refract || Self::reflectance(cos_theta, ri) > rng.gen::<f64>() {
+            sign = 1.0;
+            Vec3::reflect(ray.direction(), hit_info.normal)
+        } else {
+            sign = -1.0;
+            Vec3::refract(ray.direction(), hit_info.normal, ri)
+        };
+
+        let ray = Ray::new(hit_info.point + hit_info.normal * (sign * eps), dir);
+        (true, attenuation, ray)
+    }
+
+    fn reflectance(cosine: f64, refraction_index: f64) -> f64 {
+        let mut r0 = (1.0 - refraction_index) / (1.0 + refraction_index);
+        r0 *= r0;
+        r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
     }
 }
 

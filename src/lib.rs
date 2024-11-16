@@ -7,6 +7,7 @@ pub mod light;
 pub mod material;
 pub mod ray;
 pub mod sphere;
+pub mod utils;
 pub mod vec3;
 
 pub trait Hittable {

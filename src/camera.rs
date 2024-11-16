@@ -1,3 +1,5 @@
+use std::f64::consts::PI;
+
 use crate::{ray::Ray, vec3::Vec3, Hittable, World};
 use rand::Rng;
 
@@ -11,7 +13,13 @@ pub struct Camera {
     pub vfov: f64,
     pub look_from: Vec3,
     pub look_at: Vec3,
-    pub up: Vec3,
+    pub vup: Vec3,
+
+    pub blur_strength: f64,
+
+    forward: Vec3,
+    right: Vec3,
+    up: Vec3,
 
     image_height: usize,
     pixel_sample_scale: f64,
@@ -48,17 +56,18 @@ impl Camera {
         let viewport_height = 2.0 * h * focal_length;
         let viewport_width = viewport_height * (self.image_width as f64 / self.image_height as f64);
 
-        let v = (self.look_from - self.look_at).normalized(); // forward
-        let r = self.up.cross(&v).normalized(); // right
-        let u = v.cross(&r); // up
+        self.forward = (self.look_from - self.look_at).normalized(); // forward
+        self.right = self.vup.cross(&self.forward).normalized(); // right
+        self.up = self.forward.cross(&self.right); // up
 
-        let viewport_u = r * viewport_width;
-        let viewport_v = u * -viewport_height;
+        let viewport_u = self.right * viewport_width;
+        let viewport_v = self.up * -viewport_height;
 
         self.pixel_du = viewport_u / self.image_width as f64;
         self.pixel_dv = viewport_v / self.image_height as f64;
 
-        let upperleft = self.center - (v * focal_length) - (viewport_u / 2.0) - (viewport_v / 2.0);
+        let upperleft =
+            self.center - (self.forward * focal_length) - (viewport_u / 2.0) - (viewport_v / 2.0);
         self.pixel00 = upperleft + (self.pixel_du + self.pixel_dv) * 0.5;
     }
 
@@ -76,10 +85,13 @@ impl Camera {
         }
     }
 
-    // offsets from the pixel center but are still in its 'square'
-    fn sample_square() -> Vec3 {
+    // random point on the unit circle for offsets in blur anti-aliasing and depth-of-field
+    // TODO make this a vec2 for clarity
+    fn random_offsets() -> Vec3 {
         let mut rng = rand::thread_rng();
-        Vec3::new(rng.gen::<f64>() - 0.5, rng.gen::<f64>() - 0.5, 0.0)
+        let radius = rng.gen::<f64>().sqrt();
+        let angle = rng.gen::<f64>() * 2.0 * PI;
+        Vec3::new(radius * angle.cos(), radius * angle.sin(), 0.0)
     }
 
     fn ambient_light(ray: &Ray) -> Vec3 {
@@ -88,10 +100,10 @@ impl Camera {
     }
 
     fn get_ray(&self, r: usize, c: usize) -> Ray {
-        let offset = Self::sample_square();
+        let blur = Self::random_offsets() * self.blur_strength;
         let sample_location = self.pixel00
-            + (self.pixel_dv * (r as f64 + offset.y()))
-            + (self.pixel_du * (c as f64 + offset.x()));
+            + (self.pixel_dv * (r as f64 + blur.x()))
+            + (self.pixel_du * (c as f64 + blur.y()));
         let ray_dir = sample_location - self.center;
         Ray::new(self.center, ray_dir)
     }
@@ -101,14 +113,19 @@ impl Camera {
             return Self::ambient_light(ray);
         }
 
-        let info = world.intersects(ray, 0.0001, f64::INFINITY);
+        let eps = 1e-3;
+        let info = world.intersects(ray, eps, f64::INFINITY);
         if info.did_hit {
-            let (_, attenuation, scatter_ray) = match info.mat {
+            let (should_bounce, attenuation, scatter_ray) = match info.mat {
                 crate::material::Material::DIFFUSE(material) => material.scatter(&info),
                 crate::material::Material::SPECULAR(material) => material.scatter(ray, &info),
                 crate::material::Material::REFRACTIVE(material) => material.scatter(ray, &info),
             };
-            Self::trace(&scatter_ray, depth - 1, world) * attenuation
+            if should_bounce {
+                Self::trace(&scatter_ray, depth - 1, world) * attenuation
+            } else {
+                attenuation
+            }
         } else {
             Self::ambient_light(ray)
         }
