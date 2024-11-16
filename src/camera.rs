@@ -16,6 +16,8 @@ pub struct Camera {
     pub vup: Vec3,
 
     pub blur_strength: f64,
+    pub focal_length: f64,
+    pub defocus_angle: f64,
 
     forward: Vec3,
     right: Vec3,
@@ -50,10 +52,9 @@ impl Camera {
 
         self.center = self.look_from;
 
-        let focal_length = (self.look_from - self.look_at).length();
         let theta = self.vfov.to_radians();
         let h = (theta / 2.0).tan();
-        let viewport_height = 2.0 * h * focal_length;
+        let viewport_height = 2.0 * h * self.focal_length;
         let viewport_width = viewport_height * (self.image_width as f64 / self.image_height as f64);
 
         self.forward = (self.look_from - self.look_at).normalized(); // forward
@@ -66,8 +67,10 @@ impl Camera {
         self.pixel_du = viewport_u / self.image_width as f64;
         self.pixel_dv = viewport_v / self.image_height as f64;
 
-        let upperleft =
-            self.center - (self.forward * focal_length) - (viewport_u / 2.0) - (viewport_v / 2.0);
+        let upperleft = self.center
+            - (self.forward * self.focal_length)
+            - (viewport_u / 2.0)
+            - (viewport_v / 2.0);
         self.pixel00 = upperleft + (self.pixel_du + self.pixel_dv) * 0.5;
     }
 
@@ -104,8 +107,15 @@ impl Camera {
         let sample_location = self.pixel00
             + (self.pixel_dv * (r as f64 + blur.x()))
             + (self.pixel_du * (c as f64 + blur.y()));
-        let ray_dir = sample_location - self.center;
-        Ray::new(self.center, ray_dir)
+            
+        let r = (self.defocus_angle / 2.0).to_radians().tan() * self.focal_length;
+        let du = self.right * r;
+        let dv = self.up * r;
+        let p = Self::random_offsets();
+        let ray_origin = self.center + (du * p.x()) + (dv * p.y());
+
+        let ray_dir = sample_location - ray_origin;
+        Ray::new(ray_origin, ray_dir)
     }
 
     fn trace(ray: &Ray, depth: usize, world: &World) -> Vec3 {

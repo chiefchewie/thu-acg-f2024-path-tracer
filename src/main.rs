@@ -85,6 +85,8 @@ fn main() {
     camera.vup = Vec3::new(0., 1., 0.);
 
     camera.blur_strength = 0.5;
+    camera.focal_length = 3.4;
+    camera.defocus_angle = 10.0;
 
     camera.init();
 
