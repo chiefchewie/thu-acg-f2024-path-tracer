@@ -45,42 +45,6 @@ fn main() {
             }
         }
     }
-    // let mut world = World::new();
-    // let mat_ground = Material::DIFFUSE(DiffuseMaterial::new(0.8, 0.8, 0.0));
-    // let mat_center = Material::DIFFUSE(DiffuseMaterial::new(0.1, 0.2, 0.5));
-    // let mat_left = Material::REFRACTIVE(RefractiveMaterial::new(1.5));
-    // let mat_bubble = Material::REFRACTIVE(RefractiveMaterial::new(1.0 / 1.5));
-    // let mat_right = Material::SPECULAR(SpecularMaterial::new(0.8, 0.6, 0.2));
-
-    // world.add(Box::new(Sphere::new(
-    //     100.0,
-    //     Vec3::new(0.0, -100.5, -1.0),
-    //     mat_ground,
-    // )));
-
-    // world.add(Box::new(Sphere::new(
-    //     0.5,
-    //     Vec3::new(0.0, 0.0, -1.2),
-    //     mat_center,
-    // )));
-
-    // world.add(Box::new(Sphere::new(
-    //     0.5,
-    //     Vec3::new(-1.0, 0.0, -1.0),
-    //     mat_left,
-    // )));
-
-    // world.add(Box::new(Sphere::new(
-    //     0.4,
-    //     Vec3::new(-1.0, 0.0, -1.0),
-    //     mat_bubble,
-    // )));
-
-    // world.add(Box::new(Sphere::new(
-    //     0.5,
-    //     Vec3::new(1.0, 0.0, -1.0),
-    //     mat_right,
-    // )));
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
