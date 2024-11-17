@@ -154,20 +154,20 @@ impl Camera {
         }
 
         let eps = 1e-3;
-        let info = world.intersects(ray, eps, f64::INFINITY);
-        if info.did_hit {
-            let (should_bounce, attenuation, scatter_ray) = match info.mat {
-                crate::material::Material::DIFFUSE(material) => material.scatter(&info),
-                crate::material::Material::SPECULAR(material) => material.scatter(ray, &info),
-                crate::material::Material::REFRACTIVE(material) => material.scatter(ray, &info),
-            };
-            if should_bounce {
-                Self::trace(&scatter_ray, depth - 1, world) * attenuation
-            } else {
-                attenuation
+        match world.intersects(ray, eps, f64::INFINITY) {
+            Some(info) => {
+                let (should_bounce, attenuation, scatter_ray) = match info.mat {
+                    crate::material::Material::DIFFUSE(material) => material.scatter(&info),
+                    crate::material::Material::SPECULAR(material) => material.scatter(ray, &info),
+                    crate::material::Material::REFRACTIVE(material) => material.scatter(ray, &info),
+                };
+                if should_bounce {
+                    Self::trace(&scatter_ray, depth - 1, world) * attenuation
+                } else {
+                    attenuation
+                }
             }
-        } else {
-            Self::ambient_light(ray)
+            None => Self::ambient_light(ray),
         }
     }
 }

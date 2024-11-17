@@ -2,7 +2,6 @@ use crate::{material::Material, ray::Ray, vec3::Vec3};
 
 #[derive(Debug, Clone, Copy)]
 pub struct HitInfo {
-    pub did_hit: bool,
     pub point: Vec3,
     pub normal: Vec3,
     pub dist: f64,
@@ -20,7 +19,6 @@ impl HitInfo {
 impl Default for HitInfo {
     fn default() -> HitInfo {
         HitInfo {
-            did_hit: false,
             point: Default::default(),
             normal: Default::default(),
             dist: f64::INFINITY,
