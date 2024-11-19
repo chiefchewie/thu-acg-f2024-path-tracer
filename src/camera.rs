@@ -157,7 +157,7 @@ impl Camera {
         match world.intersects(ray, eps, f64::INFINITY) {
             Some(info) => {
                 let (should_bounce, attenuation, scatter_ray) = match info.mat {
-                    crate::material::Material::DIFFUSE(material) => material.scatter(&info),
+                    crate::material::Material::DIFFUSE(ref material) => material.scatter(&info),
                     crate::material::Material::SPECULAR(material) => material.scatter(ray, &info),
                     crate::material::Material::REFRACTIVE(material) => material.scatter(ray, &info),
                 };

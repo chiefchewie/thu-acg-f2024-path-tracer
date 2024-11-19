@@ -2,7 +2,7 @@ use core::f64;
 
 use crate::{hit_info::HitInfo, material::Material, ray::Ray, vec3::Vec3, Hittable};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone)]
 pub struct Sphere {
     radius: f64,
     center: Vec3,
@@ -56,7 +56,7 @@ impl Hittable for Sphere {
         };
         hit_info.point = ray.at(intersect);
         hit_info.dist = intersect;
-        hit_info.mat = self.material;
+        hit_info.mat = self.material.clone();
 
         let normal = (hit_info.point - self.center).normalized();
         hit_info.set_face_normal(ray, normal);

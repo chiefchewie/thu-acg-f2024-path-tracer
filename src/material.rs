@@ -1,6 +1,13 @@
+use std::rc::Rc;
+
 use rand::Rng;
 
-use crate::{hit_info::HitInfo, ray::Ray, vec3::Vec3};
+use crate::{
+    hit_info::HitInfo,
+    ray::Ray,
+    texture::{self, SolidColorTexture, Texture},
+    vec3::Vec3,
+};
 
 // TODO figure out if there's a way to make this abstrat and not have it suck
 // pub trait Material {
@@ -9,20 +16,20 @@ use crate::{hit_info::HitInfo, ray::Ray, vec3::Vec3};
 //     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray);
 // }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Clone)]
 pub struct DiffuseMaterial {
-    albedo: Vec3,
+    texture: Rc<dyn Texture>,
 }
 
 impl DiffuseMaterial {
-    pub fn new(r: f64, g: f64, b: f64) -> DiffuseMaterial {
-        DiffuseMaterial {
-            albedo: Vec3::new(r, g, b),
-        }
+    pub fn new(texture: Rc<dyn Texture>) -> DiffuseMaterial {
+        DiffuseMaterial { texture }
     }
 
     pub fn from_rgb(rgb: Vec3) -> DiffuseMaterial {
-        DiffuseMaterial { albedo: rgb }
+        DiffuseMaterial {
+            texture: Rc::new(SolidColorTexture::from_vec(rgb)),
+        }
     }
 
     pub fn scatter(&self, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
@@ -34,7 +41,7 @@ impl DiffuseMaterial {
         let eps = 1e-3;
         (
             true,
-            self.albedo,
+            self.texture.value(hit_info.u, hit_info.v, &hit_info.point),
             Ray::new(hit_info.point + hit_info.normal * eps, scatter_dir),
         )
     }
@@ -111,7 +118,7 @@ impl RefractiveMaterial {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone)]
 pub enum Material {
     DIFFUSE(DiffuseMaterial),
     SPECULAR(SpecularMaterial),
@@ -120,7 +127,7 @@ pub enum Material {
 
 impl Default for Material {
     fn default() -> Self {
-        Self::DIFFUSE(DiffuseMaterial {
+        Self::SPECULAR(SpecularMaterial {
             albedo: Vec3::zeroes(),
         })
     }

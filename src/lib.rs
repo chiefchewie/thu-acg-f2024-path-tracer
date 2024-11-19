@@ -9,6 +9,7 @@ pub mod ray;
 pub mod sphere;
 pub mod utils;
 pub mod vec3;
+pub mod texture;
 
 pub trait Hittable {
     fn intersects(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitInfo>;

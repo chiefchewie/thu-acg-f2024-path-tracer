@@ -1,7 +1,10 @@
+use std::rc::Rc;
+
 use path_tracer::{
     camera::Camera,
     material::{DiffuseMaterial, Material, RefractiveMaterial, SpecularMaterial},
     sphere::Sphere,
+    texture::{CheckerTexture, SolidColorTexture},
     vec3::Vec3,
     World,
 };
@@ -10,7 +13,11 @@ use rand::Rng;
 fn main() {
     let mut world = World::new();
 
-    let mat_ground = Material::DIFFUSE(DiffuseMaterial::new(0.5, 0.5, 0.5));
+    let checker_tex =
+        CheckerTexture::from_colors(0.32, Vec3::new(0.2, 0.3, 0.1), Vec3::new(0.9, 0.9, 0.9));
+
+    let mat_ground = Material::DIFFUSE(DiffuseMaterial::new(Rc::new(checker_tex)));
+
     world.add(Box::new(Sphere::new(
         1000.0,
         Vec3::new(0.0, -1000.0, 0.0),
@@ -20,8 +27,8 @@ fn main() {
     let mat1 = Material::REFRACTIVE(RefractiveMaterial::new(1.5));
     world.add(Box::new(Sphere::new(1.0, Vec3::new(0.0, 1.0, 0.0), mat1)));
 
-    let mat2 = Material::DIFFUSE(DiffuseMaterial::new(0.4, 0.2, 0.1));
-    world.add(Box::new(Sphere::new(1.0, Vec3::new(-4.0, 1.0, 0.0), mat2)));
+    // let mat2 = Material::DIFFUSE(DiffuseMaterial::new(0.4, 0.2, 0.1));
+    // world.add(Box::new(Sphere::new(1.0, Vec3::new(-4.0, 1.0, 0.0), mat2)));
 
     let mat3 = Material::SPECULAR(SpecularMaterial::new(0.7, 0.6, 0.5));
     world.add(Box::new(Sphere::new(1.0, Vec3::new(4.0, 1.0, 0.0), mat3)));
