@@ -4,13 +4,13 @@ use path_tracer::{
     camera::Camera,
     material::{Diffuse, MaterialType, Refractive, Specular},
     sphere::Sphere,
-    texture::CheckerTexture,
+    texture::{CheckerTexture, ImageTexture, Texture},
     vec3::Vec3,
     World,
 };
 use rand::Rng;
 
-fn main() {
+fn balls_scene() {
     let mut world = World::new();
 
     let checker_tex =
@@ -53,6 +53,8 @@ fn main() {
         }
     }
 
+    ImageTexture::new("image.png").value(0.0, 0.0, &Vec3::zeroes());
+
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 400;
@@ -70,4 +72,39 @@ fn main() {
 
     camera.init();
     camera.render(&world);
+}
+
+fn earth_scene() {
+    let earth_texture = ImageTexture::new("earthmap.jpg");
+    let earth_surface = MaterialType::DIFFUSE(Diffuse::new(Rc::new(earth_texture)));
+
+    let mut world = World::new();
+    world.add(Box::new(Sphere::new(2.0, Vec3::zeroes(), earth_surface)));
+
+    let mut camera = Camera::new();
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 400;
+    camera.samples_per_pixel = 10;
+    camera.max_depth = 10;
+
+    camera.vfov = 20.0;
+    camera.look_from = Vec3::new(12.0, 12.0, 12.0);
+    camera.look_at = Vec3::new(0.0, 0.0, 0.0);
+    camera.vup = Vec3::new(0.0, 1.0, 0.0);
+
+    camera.blur_strength = 0.5;
+    camera.focal_length = 10.0;
+    camera.defocus_angle = 0.0;
+
+    camera.init();
+    camera.render(&world);
+}
+
+fn main() {
+    let x = 2;
+    match x {
+        1 => balls_scene(),
+        2 => earth_scene(),
+        _ => (),
+    }
 }

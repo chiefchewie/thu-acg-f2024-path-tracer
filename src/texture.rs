@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use image::{ImageBuffer, ImageReader, Pixel, Rgb};
+
 use crate::vec3::Vec3;
 
 pub trait Texture {
@@ -62,5 +64,42 @@ impl Texture for CheckerTexture {
         } else {
             self.tex2.value(u, v, point)
         }
+    }
+}
+
+pub struct ImageTexture {
+    img: ImageBuffer<Rgb<u8>, Vec<u8>>,
+}
+
+impl ImageTexture {
+    pub fn new(filename: &str) -> ImageTexture {
+        let img = ImageReader::open(filename)
+            .unwrap()
+            .decode()
+            .unwrap()
+            .to_rgb8();
+        ImageTexture { img }
+    }
+}
+
+impl Texture for ImageTexture {
+    fn value(&self, mut u: f64, mut v: f64, _point: &Vec3) -> Vec3 {
+        if self.img.height() == 0 {
+            return Vec3::new(0.0, 1.0, 1.0);
+        }
+
+        u = u.clamp(0.0, 1.0);
+        v = 1.0 - v.clamp(0.0, 1.0);
+
+        let i = ((u * self.img.height() as f64) as u32).clamp(0, self.img.width() - 1);
+        let j = ((v * self.img.height() as f64) as u32).clamp(0, self.img.height() - 1);
+        let pixel = self.img.get_pixel(i, j);
+        let color_scale = 1.0 / 255.0;
+
+        Vec3::new(
+            color_scale * pixel.channels()[0] as f64,
+            color_scale * pixel.channels()[1] as f64,
+            color_scale * pixel.channels()[2] as f64,
+        )
     }
 }

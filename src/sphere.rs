@@ -1,4 +1,5 @@
 use core::f64;
+use std::f64::consts::PI;
 
 use crate::{hit_info::HitInfo, material::MaterialType, ray::Ray, vec3::Vec3, Hittable};
 
@@ -24,6 +25,12 @@ impl Sphere {
 
     pub fn center(&self) -> Vec3 {
         self.center
+    }
+
+    fn get_uv(p: &Vec3) -> (f64, f64) {
+        let theta = (-p.y()).acos();
+        let phi = f64::atan2(-p.z(), p.x()) + PI;
+        (phi / (2.0 * PI), theta / PI)
     }
 }
 
@@ -57,8 +64,10 @@ impl Hittable for Sphere {
         hit_info.point = ray.at(intersect);
         hit_info.dist = intersect;
         hit_info.mat = self.material.clone();
-
         let normal = (hit_info.point - self.center).normalized();
+        let uv = Self::get_uv(&normal);
+        hit_info.u = uv.0;
+        hit_info.v = uv.1;
         hit_info.set_face_normal(ray, normal);
         Some(hit_info)
     }
