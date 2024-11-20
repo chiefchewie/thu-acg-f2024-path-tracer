@@ -1,16 +1,16 @@
 use core::f64;
 
-use crate::{hit_info::HitInfo, material::Material, ray::Ray, vec3::Vec3, Hittable};
+use crate::{hit_info::HitInfo, material::MaterialType, ray::Ray, vec3::Vec3, Hittable};
 
 #[derive(Clone)]
 pub struct Sphere {
     radius: f64,
     center: Vec3,
-    material: Material,
+    material: MaterialType,
 }
 
 impl Sphere {
-    pub fn new(radius: f64, center: Vec3, material: Material) -> Sphere {
+    pub fn new(radius: f64, center: Vec3, material: MaterialType) -> Sphere {
         Sphere {
             radius,
             center,

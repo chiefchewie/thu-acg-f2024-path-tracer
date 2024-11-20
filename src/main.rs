@@ -2,9 +2,9 @@ use std::rc::Rc;
 
 use path_tracer::{
     camera::Camera,
-    material::{DiffuseMaterial, Material, RefractiveMaterial, SpecularMaterial},
+    material::{Diffuse, MaterialType, Refractive, Specular},
     sphere::Sphere,
-    texture::{CheckerTexture, SolidColorTexture},
+    texture::CheckerTexture,
     vec3::Vec3,
     World,
 };
@@ -16,7 +16,7 @@ fn main() {
     let checker_tex =
         CheckerTexture::from_colors(0.32, Vec3::new(0.2, 0.3, 0.1), Vec3::new(0.9, 0.9, 0.9));
 
-    let mat_ground = Material::DIFFUSE(DiffuseMaterial::new(Rc::new(checker_tex)));
+    let mat_ground = MaterialType::DIFFUSE(Diffuse::new(Rc::new(checker_tex)));
 
     world.add(Box::new(Sphere::new(
         1000.0,
@@ -24,13 +24,13 @@ fn main() {
         mat_ground,
     )));
 
-    let mat1 = Material::REFRACTIVE(RefractiveMaterial::new(1.5));
+    let mat1 = MaterialType::REFRACTIVE(Refractive::new(1.5));
     world.add(Box::new(Sphere::new(1.0, Vec3::new(0.0, 1.0, 0.0), mat1)));
 
-    // let mat2 = Material::DIFFUSE(DiffuseMaterial::new(0.4, 0.2, 0.1));
-    // world.add(Box::new(Sphere::new(1.0, Vec3::new(-4.0, 1.0, 0.0), mat2)));
+    let mat2 = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.4, 0.2, 0.1)));
+    world.add(Box::new(Sphere::new(1.0, Vec3::new(-4.0, 1.0, 0.0), mat2)));
 
-    let mat3 = Material::SPECULAR(SpecularMaterial::new(0.7, 0.6, 0.5));
+    let mat3 = MaterialType::SPECULAR(Specular::new(0.7, 0.6, 0.5));
     world.add(Box::new(Sphere::new(1.0, Vec3::new(4.0, 1.0, 0.0), mat3)));
 
     let mut rng = rand::thread_rng();
@@ -41,12 +41,12 @@ fn main() {
             if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
                 let sphere_material = if choose_mat < 0.8 {
                     let albedo = Vec3::random() * Vec3::random();
-                    Material::DIFFUSE(DiffuseMaterial::from_rgb(albedo))
+                    MaterialType::DIFFUSE(Diffuse::from_rgb(albedo))
                 } else if choose_mat < 0.95 {
                     let albedo = Vec3::rand_range(0.5, 1.0);
-                    Material::SPECULAR(SpecularMaterial::from_rgb(albedo))
+                    MaterialType::SPECULAR(Specular::from_rgb(albedo))
                 } else {
-                    Material::REFRACTIVE(RefractiveMaterial::new(1.5))
+                    MaterialType::REFRACTIVE(Refractive::new(1.5))
                 };
                 world.add(Box::new(Sphere::new(0.2, center, sphere_material)));
             }

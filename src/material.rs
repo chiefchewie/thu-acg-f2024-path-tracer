@@ -5,86 +5,98 @@ use rand::Rng;
 use crate::{
     hit_info::HitInfo,
     ray::Ray,
-    texture::{self, SolidColorTexture, Texture},
+    texture::{SolidColorTexture, Texture},
     vec3::Vec3,
 };
 
-// TODO figure out if there's a way to make this abstrat and not have it suck
-// pub trait Material {
-//     // returns a bool if this material scatters or not
-//     // if scatter: then also contains the scattered ray and attenutation vector:w
-//     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray);
-// }
+const EPS: f64 = 1e-3;
+
+pub trait Material {
+    // returns a bool if this material scatters or not
+    // if scatter: then also contains the scattered ray and attenutation vector:w
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Option<Ray>, Vec3);
+}
 
 #[derive(Clone)]
-pub struct DiffuseMaterial {
+pub struct Diffuse {
     texture: Rc<dyn Texture>,
 }
 
-impl DiffuseMaterial {
-    pub fn new(texture: Rc<dyn Texture>) -> DiffuseMaterial {
-        DiffuseMaterial { texture }
+impl Diffuse {
+    pub fn new(texture: Rc<dyn Texture>) -> Diffuse {
+        Diffuse { texture }
     }
 
-    pub fn from_rgb(rgb: Vec3) -> DiffuseMaterial {
-        DiffuseMaterial {
+    pub fn from_rgb(rgb: Vec3) -> Diffuse {
+        Diffuse {
             texture: Rc::new(SolidColorTexture::from_vec(rgb)),
         }
     }
+}
 
-    pub fn scatter(&self, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
+impl Material for Diffuse {
+    fn scatter(&self, _ray: &Ray, hit_info: &HitInfo) -> (Option<Ray>, Vec3) {
         let mut scatter_dir = Vec3::random_dir() + hit_info.normal;
         if scatter_dir.near_zero() {
             scatter_dir = hit_info.normal;
         }
 
-        let eps = 1e-3;
         (
-            true,
+            Some(Ray::new(
+                hit_info.point + hit_info.normal * EPS,
+                scatter_dir,
+            )),
             self.texture.value(hit_info.u, hit_info.v, &hit_info.point),
-            Ray::new(hit_info.point + hit_info.normal * eps, scatter_dir),
         )
     }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct SpecularMaterial {
+pub struct Specular {
     albedo: Vec3,
 }
 
-impl SpecularMaterial {
-    pub fn new(r: f64, g: f64, b: f64) -> SpecularMaterial {
-        SpecularMaterial {
+impl Specular {
+    pub fn new(r: f64, g: f64, b: f64) -> Specular {
+        Specular {
             albedo: Vec3::new(r, g, b),
         }
     }
 
-    pub fn from_rgb(rgb: Vec3) -> SpecularMaterial {
-        SpecularMaterial { albedo: rgb }
+    pub fn from_rgb(rgb: Vec3) -> Specular {
+        Specular { albedo: rgb }
     }
+}
 
-    pub fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
+impl Material for Specular {
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Option<Ray>, Vec3) {
         let refl = ray.direction().reflect(hit_info.normal);
-        let eps = 1e-3;
         (
-            true,
+            Some(Ray::new(hit_info.point + hit_info.normal * EPS, refl)),
             self.albedo,
-            Ray::new(hit_info.point + hit_info.normal * eps, refl),
         )
     }
 }
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct RefractiveMaterial {
+pub struct Refractive {
     refraction_index: f64,
 }
 
-impl RefractiveMaterial {
-    pub fn new(refraction_index: f64) -> RefractiveMaterial {
-        RefractiveMaterial { refraction_index }
+impl Refractive {
+    pub fn new(refraction_index: f64) -> Refractive {
+        Refractive { refraction_index }
     }
 
-    pub fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
+    fn reflectance(cosine: f64, refraction_index: f64) -> f64 {
+        let mut r0 = (1.0 - refraction_index) / (1.0 + refraction_index);
+        r0 *= r0;
+        r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
+    }
+}
+
+impl Material for Refractive {
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Option<Ray>, Vec3) {
         let mut rng = rand::thread_rng();
         let eps = 1e-3;
         let attenuation = Vec3::new(1.0, 1.0, 1.0);
@@ -108,26 +120,20 @@ impl RefractiveMaterial {
         };
 
         let ray = Ray::new(hit_info.point + hit_info.normal * (sign * eps), dir);
-        (true, attenuation, ray)
-    }
-
-    fn reflectance(cosine: f64, refraction_index: f64) -> f64 {
-        let mut r0 = (1.0 - refraction_index) / (1.0 + refraction_index);
-        r0 *= r0;
-        r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
+        (Some(ray), attenuation)
     }
 }
 
 #[derive(Clone)]
-pub enum Material {
-    DIFFUSE(DiffuseMaterial),
-    SPECULAR(SpecularMaterial),
-    REFRACTIVE(RefractiveMaterial),
+pub enum MaterialType {
+    DIFFUSE(Diffuse),
+    SPECULAR(Specular),
+    REFRACTIVE(Refractive),
 }
 
-impl Default for Material {
+impl Default for MaterialType {
     fn default() -> Self {
-        Self::SPECULAR(SpecularMaterial {
+        Self::SPECULAR(Specular {
             albedo: Vec3::zeroes(),
         })
     }

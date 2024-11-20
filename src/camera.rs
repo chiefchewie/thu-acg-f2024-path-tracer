@@ -1,6 +1,11 @@
 use std::{f64::consts::PI, fs::File, time::Instant};
 
-use crate::{ray::Ray, vec3::Vec3, Hittable, World};
+use crate::{
+    material::{Material, MaterialType},
+    ray::Ray,
+    vec3::Vec3,
+    Hittable, World,
+};
 use image::{codecs::png::PngEncoder, ImageEncoder};
 use rand::Rng;
 
@@ -156,12 +161,12 @@ impl Camera {
         let eps = 1e-3;
         match world.intersects(ray, eps, f64::INFINITY) {
             Some(info) => {
-                let (should_bounce, attenuation, scatter_ray) = match info.mat {
-                    crate::material::Material::DIFFUSE(ref material) => material.scatter(&info),
-                    crate::material::Material::SPECULAR(material) => material.scatter(ray, &info),
-                    crate::material::Material::REFRACTIVE(material) => material.scatter(ray, &info),
+                let (scatter, attenuation) = match info.mat {
+                    MaterialType::DIFFUSE(ref material) => material.scatter(ray, &info),
+                    MaterialType::SPECULAR(material) => material.scatter(ray, &info),
+                    MaterialType::REFRACTIVE(material) => material.scatter(ray, &info),
                 };
-                if should_bounce {
+                if let Some(scatter_ray) = scatter {
                     Self::trace(&scatter_ray, depth - 1, world) * attenuation
                 } else {
                     attenuation

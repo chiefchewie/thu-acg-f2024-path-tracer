@@ -1,4 +1,4 @@
-use crate::{material::Material, ray::Ray, vec3::Vec3};
+use crate::{material::MaterialType, ray::Ray, vec3::Vec3};
 
 #[derive(Clone)]
 pub struct HitInfo {
@@ -6,7 +6,7 @@ pub struct HitInfo {
     pub normal: Vec3,
     pub dist: f64,
     pub front_face: bool,
-    pub mat: Material,
+    pub mat: MaterialType,
     pub u: f64,
     pub v: f64,
 }
