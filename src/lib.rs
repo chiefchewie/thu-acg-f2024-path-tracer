@@ -1,4 +1,5 @@
 use hit_info::HitInfo;
+use interval::Interval;
 use ray::Ray;
 
 pub mod camera;
@@ -10,9 +11,10 @@ pub mod sphere;
 pub mod texture;
 pub mod utils;
 pub mod vec3;
+pub mod interval;
 
 pub trait Hittable {
-    fn intersects(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitInfo>;
+    fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo>;
 }
 
 pub struct World {
@@ -37,11 +39,11 @@ impl Default for World {
 
 impl Hittable for World {
     /// intersect with t in (t_min, t_max)
-    fn intersects(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitInfo> {
-        let mut closest_hit = t_max;
+    fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
+        let mut closest_hit = ray_t.max;
         let mut hit_info = None;
         for obj in self.objects.iter() {
-            if let Some(info) = obj.intersects(ray, t_min, closest_hit) {
+            if let Some(info) = obj.intersects(ray, Interval::new(ray_t.min, closest_hit)) {
                 closest_hit = info.dist;
                 hit_info = Some(info);
             }

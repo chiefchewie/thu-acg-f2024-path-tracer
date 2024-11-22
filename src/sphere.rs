@@ -1,7 +1,7 @@
 use core::f64;
 use std::f64::consts::PI;
 
-use crate::{hit_info::HitInfo, material::MaterialType, ray::Ray, vec3::Vec3, Hittable};
+use crate::{hit_info::HitInfo, interval::Interval, material::MaterialType, ray::Ray, vec3::Vec3, Hittable};
 
 #[derive(Clone)]
 pub struct Sphere {
@@ -35,7 +35,7 @@ impl Sphere {
 }
 
 impl Hittable for Sphere {
-    fn intersects(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitInfo> {
+    fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
         let l = self.center - ray.origin();
         let s = Vec3::dot(&l, &ray.direction());
         let l2 = l.length_squared();
@@ -54,7 +54,7 @@ impl Hittable for Sphere {
         let intersect = if l2 > r2 { s - q } else { s + q };
 
         // TODO this condition is sussy
-        if intersect <= t_min || intersect >= t_max {
+        if intersect <= ray_t.min || intersect >= ray_t.max {
             return None;
         }
 

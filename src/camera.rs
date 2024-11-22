@@ -1,10 +1,7 @@
 use std::{f64::consts::PI, fs::File, time::Instant};
 
 use crate::{
-    material::{Material, MaterialType},
-    ray::Ray,
-    vec3::Vec3,
-    Hittable, World,
+    interval::Interval, material::{Material, MaterialType}, ray::Ray, vec3::Vec3, Hittable, World
 };
 use image::{codecs::png::PngEncoder, ImageEncoder};
 use rand::Rng;
@@ -115,11 +112,7 @@ impl Camera {
     }
 
     fn gamma_correct(x: f64) -> f64 {
-        if x > 0.0 {
-            x.sqrt()
-        } else {
-            0.0
-        }
+        x.max(0.0).sqrt()
     }
 
     // random point on the unit circle for offsets in blur anti-aliasing and depth-of-field
@@ -143,7 +136,6 @@ impl Camera {
             + (self.pixel_du * (c as f64 + blur_offset.y()));
 
         let radius = (self.defocus_angle / 2.0).to_radians().tan() * self.focal_length;
-        // let r = self.focal_length / self.fstop / 2.0;
         let dof_offset_right = self.right * radius;
         let dof_offset_up = self.up * radius;
         let p = Self::random_offsets();
@@ -159,7 +151,7 @@ impl Camera {
         }
 
         let eps = 1e-3;
-        match world.intersects(ray, eps, f64::INFINITY) {
+        match world.intersects(ray, Interval::new(eps, f64::INFINITY)) {
             Some(info) => {
                 let (scatter, attenuation) = match info.mat {
                     MaterialType::DIFFUSE(ref material) => material.scatter(ray, &info),

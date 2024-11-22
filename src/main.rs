@@ -101,7 +101,7 @@ fn earth_scene() {
 }
 
 fn main() {
-    let x = 2;
+    let x = 1;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),
