@@ -6,12 +6,12 @@ use crate::utils::normal_dist;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Vec3 {
-    v: [f64; 3]
+    v: [f64; 3],
 }
 
 impl Vec3 {
     pub fn new(x: f64, y: f64, z: f64) -> Vec3 {
-        Vec3 {v:[x,y,z]}
+        Vec3 { v: [x, y, z] }
     }
 
     pub fn x(&self) -> f64 {
@@ -31,7 +31,7 @@ impl Vec3 {
     }
 
     pub fn length_squared(&self) -> f64 {
-        self.v[0] * self.v[0] + self.v[1] * self.v[1]+ self.v[2] * self.v[2]
+        self.v[0] * self.v[0] + self.v[1] * self.v[1] + self.v[2] * self.v[2]
     }
 
     pub fn dot(&self, other: &Vec3) -> f64 {
@@ -92,14 +92,22 @@ impl Vec3 {
 impl Add for Vec3 {
     type Output = Self;
     fn add(self, other: Vec3) -> Self::Output {
-        Vec3::new(self.x() + other.x(), self.y() + other.y(), self.z() + other.z())
+        Vec3::new(
+            self.x() + other.x(),
+            self.y() + other.y(),
+            self.z() + other.z(),
+        )
     }
 }
 
 impl Sub for Vec3 {
     type Output = Self;
     fn sub(self, other: Vec3) -> Self::Output {
-        Vec3::new(self.x() - other.x(), self.y() - other.y(), self.z() - other.z())
+        Vec3::new(
+            self.x() - other.x(),
+            self.y() - other.y(),
+            self.z() - other.z(),
+        )
     }
 }
 
@@ -113,7 +121,11 @@ impl Neg for Vec3 {
 impl Mul<Vec3> for Vec3 {
     type Output = Self;
     fn mul(self, other: Vec3) -> Self::Output {
-        Vec3::new(self.x() * other.x(), self.y() * other.y(), self.z() * other.z())
+        Vec3::new(
+            self.x() * other.x(),
+            self.y() * other.y(),
+            self.z() * other.z(),
+        )
     }
 }
 
@@ -127,7 +139,11 @@ impl Mul<f64> for Vec3 {
 impl Div<Vec3> for Vec3 {
     type Output = Self;
     fn div(self, other: Vec3) -> Self::Output {
-        Vec3::new(self.x() / other.x(), self.y() / other.y(), self.z() / other.z())
+        Vec3::new(
+            self.x() / other.x(),
+            self.y() / other.y(),
+            self.z() / other.z(),
+        )
     }
 }
 

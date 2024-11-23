@@ -1,30 +1,39 @@
 use core::f64;
 use std::f64::consts::PI;
 
-use crate::{hit_info::HitInfo, interval::Interval, material::MaterialType, ray::Ray, vec3::Vec3, Hittable};
+use crate::{
+    hit_info::HitInfo, interval::Interval, material::MaterialType, ray::Ray, vec3::Vec3, Hittable,
+};
 
 #[derive(Clone)]
 pub struct Sphere {
     radius: f64,
-    center: Vec3,
+    position1: Vec3,
+    position2: Vec3,
     material: MaterialType,
 }
 
 impl Sphere {
-    pub fn new(radius: f64, center: Vec3, material: MaterialType) -> Sphere {
+    pub fn new_still(radius: f64, position: Vec3, material: MaterialType) -> Sphere {
         Sphere {
-            radius,
-            center,
+            radius: radius.max(0.0),
+            position1: position,
+            position2: position,
+            material,
+        }
+    }
+
+    pub fn new_moving(radius: f64, position1: Vec3, position2: Vec3, material: MaterialType) -> Sphere {
+        Sphere {
+            radius: radius.max(0.0),
+            position1,
+            position2,
             material,
         }
     }
 
     pub fn radius(&self) -> f64 {
         self.radius
-    }
-
-    pub fn center(&self) -> Vec3 {
-        self.center
     }
 
     fn get_uv(p: &Vec3) -> (f64, f64) {
@@ -36,7 +45,8 @@ impl Sphere {
 
 impl Hittable for Sphere {
     fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
-        let l = self.center - ray.origin();
+        let current_center = self.position1 + (self.position2 - self.position1) * (ray.time());
+        let l = current_center - ray.origin();
         let s = Vec3::dot(&l, &ray.direction());
         let l2 = l.length_squared();
         let r2 = self.radius() * self.radius();
@@ -64,7 +74,7 @@ impl Hittable for Sphere {
         hit_info.point = ray.at(intersect);
         hit_info.dist = intersect;
         hit_info.mat = self.material.clone();
-        let normal = (hit_info.point - self.center).normalized();
+        let normal = (hit_info.point - current_center).normalized();
         let uv = Self::get_uv(&normal);
         hit_info.u = uv.0;
         hit_info.v = uv.1;

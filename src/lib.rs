@@ -4,6 +4,7 @@ use ray::Ray;
 
 pub mod camera;
 pub mod hit_info;
+pub mod interval;
 pub mod light;
 pub mod material;
 pub mod ray;
@@ -11,7 +12,6 @@ pub mod sphere;
 pub mod texture;
 pub mod utils;
 pub mod vec3;
-pub mod interval;
 
 pub trait Hittable {
     fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo>;

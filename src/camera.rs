@@ -145,10 +145,11 @@ impl Camera {
         let dof_offset_right = self.right * radius;
         let dof_offset_up = self.up * radius;
         let p = Self::random_offsets();
-        let ray_origin = self.center + (dof_offset_right * p.x()) + (dof_offset_up * p.y());
 
-        let ray_dir = sample_location - ray_origin;
-        Ray::new(ray_origin, ray_dir)
+        let ray_origin = self.center + (dof_offset_right * p.x()) + (dof_offset_up * p.y());
+        let ray_direction = sample_location - ray_origin;
+        let ray_time = thread_rng().gen::<f64>();
+        Ray::new(ray_origin, ray_direction, ray_time)
     }
 
     fn trace(&self, r: usize, c: usize, world: &World) -> Vec3 {

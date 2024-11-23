@@ -8,7 +8,7 @@ use path_tracer::{
     vec3::Vec3,
     World,
 };
-use rand::Rng;
+use rand::{thread_rng, Rng};
 
 fn balls_scene() {
     let mut world = World::new();
@@ -18,20 +18,32 @@ fn balls_scene() {
 
     let mat_ground = MaterialType::DIFFUSE(Diffuse::new(Rc::new(checker_tex)));
 
-    world.add(Box::new(Sphere::new(
+    world.add(Box::new(Sphere::new_still(
         1000.0,
         Vec3::new(0.0, -1000.0, 0.0),
         mat_ground,
     )));
 
     let mat1 = MaterialType::REFRACTIVE(Refractive::new(1.5));
-    world.add(Box::new(Sphere::new(1.0, Vec3::new(0.0, 1.0, 0.0), mat1)));
+    world.add(Box::new(Sphere::new_still(
+        1.0,
+        Vec3::new(0.0, 1.0, 0.0),
+        mat1,
+    )));
 
     let mat2 = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.4, 0.2, 0.1)));
-    world.add(Box::new(Sphere::new(1.0, Vec3::new(-4.0, 1.0, 0.0), mat2)));
+    world.add(Box::new(Sphere::new_still(
+        1.0,
+        Vec3::new(-4.0, 1.0, 0.0),
+        mat2,
+    )));
 
     let mat3 = MaterialType::SPECULAR(Specular::new(0.7, 0.6, 0.5));
-    world.add(Box::new(Sphere::new(1.0, Vec3::new(4.0, 1.0, 0.0), mat3)));
+    world.add(Box::new(Sphere::new_still(
+        1.0,
+        Vec3::new(4.0, 1.0, 0.0),
+        mat3,
+    )));
 
     let mut rng = rand::thread_rng();
     for a in (-11..11).map(|x| x as f64) {
@@ -48,7 +60,17 @@ fn balls_scene() {
                 } else {
                     MaterialType::REFRACTIVE(Refractive::new(1.5))
                 };
-                world.add(Box::new(Sphere::new(0.2, center, sphere_material)));
+                if let MaterialType::DIFFUSE(_) = sphere_material {
+                    let pos2 = center + Vec3::new(0.0, thread_rng().gen_range(0.0..0.5), 0.0);
+                    world.add(Box::new(Sphere::new_moving(
+                        0.2,
+                        center,
+                        pos2,
+                        sphere_material,
+                    )));
+                } else {
+                    world.add(Box::new(Sphere::new_still(0.2, center, sphere_material)));
+                }
             }
         }
     }
@@ -58,7 +80,7 @@ fn balls_scene() {
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 400;
-    camera.samples_per_pixel = 10;
+    camera.samples_per_pixel = 100;
     camera.max_depth = 10;
 
     camera.vfov = 20.0;
@@ -79,7 +101,11 @@ fn earth_scene() {
     let earth_surface = MaterialType::DIFFUSE(Diffuse::new(Rc::new(earth_texture)));
 
     let mut world = World::new();
-    world.add(Box::new(Sphere::new(2.0, Vec3::zeroes(), earth_surface)));
+    world.add(Box::new(Sphere::new_still(
+        2.0,
+        Vec3::zeroes(),
+        earth_surface,
+    )));
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;

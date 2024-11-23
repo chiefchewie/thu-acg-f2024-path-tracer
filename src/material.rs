@@ -36,7 +36,7 @@ impl Diffuse {
 
 impl Material for Diffuse {
     /// Lambertian BRDF
-    fn scatter(&self, _ray: &Ray, hit_info: &HitInfo) -> (Option<Ray>, Vec3) {
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Option<Ray>, Vec3) {
         let mut rng = thread_rng();
         let r1 = rng.gen_range(0.0..2.0 * PI);
         let r2 = rng.gen::<f64>();
@@ -56,6 +56,7 @@ impl Material for Diffuse {
             Some(Ray::new(
                 hit_info.point + hit_info.normal * EPS,
                 scatter_dir,
+                ray.time(),
             )),
             self.texture.value(hit_info.u, hit_info.v, &hit_info.point),
         )
@@ -81,9 +82,13 @@ impl Specular {
 
 impl Material for Specular {
     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Option<Ray>, Vec3) {
-        let refl = ray.direction().reflect(hit_info.normal);
+        let refl_dir = ray.direction().reflect(hit_info.normal);
         (
-            Some(Ray::new(hit_info.point + hit_info.normal * EPS, refl)),
+            Some(Ray::new(
+                hit_info.point + hit_info.normal * EPS,
+                refl_dir,
+                ray.time(),
+            )),
             self.albedo,
         )
     }
@@ -130,7 +135,11 @@ impl Material for Refractive {
             Vec3::refract(ray.direction(), hit_info.normal, ri)
         };
 
-        let ray = Ray::new(hit_info.point + hit_info.normal * (sign * eps), dir);
+        let ray = Ray::new(
+            hit_info.point + hit_info.normal * (sign * eps),
+            dir,
+            ray.time(),
+        );
         (Some(ray), attenuation)
     }
 }
