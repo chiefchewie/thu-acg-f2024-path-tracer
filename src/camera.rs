@@ -196,7 +196,7 @@ impl Camera {
         radiance
     }
 
-    fn trace1(ray: &Ray, depth: usize, world: &World) -> Vec3 {
+    fn _trace(ray: &Ray, depth: usize, world: &World) -> Vec3 {
         if depth == 0 {
             return Vec3::zeroes();
         }
@@ -210,7 +210,7 @@ impl Camera {
                     MaterialType::REFRACTIVE(material) => material.scatter(ray, &info),
                 };
                 if let Some(scatter_ray) = scatter {
-                    Self::trace1(&scatter_ray, depth - 1, world) * attenuation
+                    Self::_trace(&scatter_ray, depth - 1, world) * attenuation
                 } else {
                     attenuation
                 }
