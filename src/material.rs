@@ -1,6 +1,6 @@
-use std::rc::Rc;
+use std::{f64::consts::PI, rc::Rc};
 
-use rand::Rng;
+use rand::{thread_rng, Rng};
 
 use crate::{
     hit_info::HitInfo,
@@ -35,12 +35,23 @@ impl Diffuse {
 }
 
 impl Material for Diffuse {
+    /// Lambertian BRDF
     fn scatter(&self, _ray: &Ray, hit_info: &HitInfo) -> (Option<Ray>, Vec3) {
-        let mut scatter_dir = Vec3::random_dir() + hit_info.normal;
-        if scatter_dir.near_zero() {
-            scatter_dir = hit_info.normal;
+        let mut rng = thread_rng();
+        let r1 = rng.gen_range(0.0..2.0 * PI);
+        let r2 = rng.gen::<f64>();
+        let r2s = r2.sqrt();
+        let w = hit_info.normal;
+        let u = if w.x().abs() > 0.1 {
+            Vec3::new(0.0, 1.0, 0.0)
+        } else {
+            Vec3::new(1.0, 0.0, 0.0)
         }
-
+        .cross(&w)
+        .normalized();
+        let v = w.cross(&u);
+        let scatter_dir =
+            (u * r1.cos() * r2s + v * r1.sin() * r2s + w * ((1.0 - r2).sqrt())).normalized();
         (
             Some(Ray::new(
                 hit_info.point + hit_info.normal * EPS,

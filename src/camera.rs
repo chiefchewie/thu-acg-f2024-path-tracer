@@ -1,10 +1,15 @@
+use core::f64;
 use std::{f64::consts::PI, fs::File, time::Instant};
 
 use crate::{
-    interval::Interval, material::{Material, MaterialType}, ray::Ray, vec3::Vec3, Hittable, World
+    interval::Interval,
+    material::{Material, MaterialType},
+    ray::Ray,
+    vec3::Vec3,
+    Hittable, World,
 };
 use image::{codecs::png::PngEncoder, ImageEncoder};
-use rand::Rng;
+use rand::{thread_rng, Rng};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Camera {
@@ -77,8 +82,9 @@ impl Camera {
                 let mut color = Vec3::zeroes();
                 // TODO instead of multiple random rays per pixel, could try other Anti-Alias methods
                 for _ in 0..self.samples_per_pixel {
-                    let ray = self.get_ray(r, c);
-                    color = color + Self::trace(&ray, self.max_depth, world);
+                    color = color + self.trace(r, c, world);
+                    // let ray = self.generate_ray(r, c);
+                    // color = color + Self::trace1(&ray, self.max_depth, world);
                 }
                 color = color * self.pixel_sample_scale;
 
@@ -129,7 +135,7 @@ impl Camera {
         Vec3::new(1.0, 1.0, 1.0) * (1.0 - a) + Vec3::new(0.5, 0.7, 1.0) * a
     }
 
-    fn get_ray(&self, r: usize, c: usize) -> Ray {
+    fn generate_ray(&self, r: usize, c: usize) -> Ray {
         let blur_offset = Self::random_offsets() * self.blur_strength;
         let sample_location = self.pixel00
             + (self.pixel_dv * (r as f64 + blur_offset.x()))
@@ -145,9 +151,54 @@ impl Camera {
         Ray::new(ray_origin, ray_dir)
     }
 
-    fn trace(ray: &Ray, depth: usize, world: &World) -> Vec3 {
+    fn trace(&self, r: usize, c: usize, world: &World) -> Vec3 {
+        let min_bounces = 5; // TODO make min_bounces a parameter
+        let eps = 1e-3;
+
+        let mut ray = self.generate_ray(r, c);
+
+        let mut radiance = Vec3::zeroes();
+        let mut throughput = Vec3::new(1.0, 1.0, 1.0);
+        for bounces in 0..self.max_depth {
+            match world.intersects(&ray, Interval::new(eps, f64::INFINITY)) {
+                None => {
+                    radiance = radiance + throughput * Self::ambient_light(&ray);
+                    break;
+                }
+                Some(info) => {
+                    // TODO instead of a switch, eval diff materials randomly based on properties?
+                    // attenuation = brdf / pdf in the lingo
+                    let (scatter, attenuation) = match info.mat {
+                        MaterialType::DIFFUSE(ref diffuse) => diffuse.scatter(&ray, &info),
+                        MaterialType::SPECULAR(ref specular) => specular.scatter(&ray, &info),
+                        MaterialType::REFRACTIVE(ref refractive) => refractive.scatter(&ray, &info),
+                    };
+
+                    // should a BRDF always return a scatter ray?
+                    if let Some(scatter_ray) = scatter {
+                        throughput = throughput * attenuation; // should always execute this line?
+                        ray = scatter_ray;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            if bounces > min_bounces {
+                // russian roulette
+                let p = throughput.x().max(throughput.y()).max(throughput.z());
+                if thread_rng().gen::<f64>() > p {
+                    break;
+                }
+                throughput = throughput / p;
+            }
+        }
+        radiance
+    }
+
+    fn trace1(ray: &Ray, depth: usize, world: &World) -> Vec3 {
         if depth == 0 {
-            return Self::ambient_light(ray);
+            return Vec3::zeroes();
         }
 
         let eps = 1e-3;
@@ -159,7 +210,7 @@ impl Camera {
                     MaterialType::REFRACTIVE(material) => material.scatter(ray, &info),
                 };
                 if let Some(scatter_ray) = scatter {
-                    Self::trace(&scatter_ray, depth - 1, world) * attenuation
+                    Self::trace1(&scatter_ray, depth - 1, world) * attenuation
                 } else {
                     attenuation
                 }
