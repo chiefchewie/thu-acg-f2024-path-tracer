@@ -5,7 +5,7 @@ use crate::{
     interval::Interval,
     material::{Material, MaterialType},
     ray::Ray,
-    vec3::Vec3,
+    vec3::{Vec2, Vec3},
     Hittable, World,
 };
 use image::{codecs::png::PngEncoder, ImageEncoder};
@@ -57,9 +57,9 @@ impl Camera {
         let viewport_height = 2.0 * h * self.focal_length;
         let viewport_width = viewport_height * (self.image_width as f64 / self.image_height as f64);
 
-        self.forward = (self.look_from - self.look_at).normalized(); // forward
-        self.right = self.vup.cross(&self.forward).normalized(); // right
-        self.up = self.forward.cross(&self.right); // up
+        self.forward = (self.look_from - self.look_at).normalize(); // forward
+        self.right = self.vup.cross(self.forward).normalize(); // right
+        self.up = self.forward.cross(self.right); // up
 
         let viewport_u = self.right * viewport_width;
         let viewport_v = self.up * -viewport_height;
@@ -79,18 +79,18 @@ impl Camera {
         let mut pixels: Vec<u8> = vec![0; self.image_width * self.image_height * 3];
         for r in 0..self.image_height {
             for c in 0..self.image_width {
-                let mut color = Vec3::zeroes();
+                let mut color = Vec3::ZERO;
                 // TODO instead of multiple random rays per pixel, could try other Anti-Alias methods
                 for _ in 0..self.samples_per_pixel {
-                    color = color + self.trace(r, c, world);
+                    color += self.trace(r, c, world);
                     // let ray = self.generate_ray(r, c);
                     // color = color + Self::trace1(&ray, self.max_depth, world);
                 }
-                color = color * self.pixel_sample_scale;
+                color *= self.pixel_sample_scale;
 
-                let rbyte = (Self::gamma_correct(color.x()).clamp(0.0, 0.999) * 256.0) as u8;
-                let gbyte = (Self::gamma_correct(color.y()).clamp(0.0, 0.999) * 256.0) as u8;
-                let bbyte = (Self::gamma_correct(color.z()).clamp(0.0, 0.999) * 256.0) as u8;
+                let rbyte = (Self::gamma_correct(color.x).clamp(0.0, 0.999) * 256.0) as u8;
+                let gbyte = (Self::gamma_correct(color.y).clamp(0.0, 0.999) * 256.0) as u8;
+                let bbyte = (Self::gamma_correct(color.z).clamp(0.0, 0.999) * 256.0) as u8;
                 let idx = r * self.image_width + c;
                 pixels[idx * 3] = rbyte;
                 pixels[idx * 3 + 1] = gbyte;
@@ -123,30 +123,30 @@ impl Camera {
 
     // random point on the unit circle for offsets in blur anti-aliasing and depth-of-field
     // TODO make this a vec2 for clarity
-    fn random_offsets() -> Vec3 {
+    fn random_offsets() -> Vec2 {
         let mut rng = rand::thread_rng();
         let radius = rng.gen::<f64>().sqrt();
         let angle = rng.gen::<f64>() * 2.0 * PI;
-        Vec3::new(radius * angle.cos(), radius * angle.sin(), 0.0)
+        Vec2::new(radius * angle.cos(), radius * angle.sin())
     }
 
     fn ambient_light(ray: &Ray) -> Vec3 {
-        let a = 0.5 * (ray.direction().y() + 1.0);
+        let a = 0.5 * (ray.direction().y + 1.0);
         Vec3::new(1.0, 1.0, 1.0) * (1.0 - a) + Vec3::new(0.5, 0.7, 1.0) * a
     }
 
     fn generate_ray(&self, r: usize, c: usize) -> Ray {
         let blur_offset = Self::random_offsets() * self.blur_strength;
         let sample_location = self.pixel00
-            + (self.pixel_dv * (r as f64 + blur_offset.x()))
-            + (self.pixel_du * (c as f64 + blur_offset.y()));
+            + (self.pixel_dv * (r as f64 + blur_offset.x))
+            + (self.pixel_du * (c as f64 + blur_offset.y));
 
         let radius = (self.defocus_angle / 2.0).to_radians().tan() * self.focal_length;
         let dof_offset_right = self.right * radius;
         let dof_offset_up = self.up * radius;
         let p = Self::random_offsets();
 
-        let ray_origin = self.center + (dof_offset_right * p.x()) + (dof_offset_up * p.y());
+        let ray_origin = self.center + (dof_offset_right * p.x) + (dof_offset_up * p.y);
         let ray_direction = sample_location - ray_origin;
         let ray_time = thread_rng().gen::<f64>();
         Ray::new(ray_origin, ray_direction, ray_time)
@@ -158,12 +158,12 @@ impl Camera {
 
         let mut ray = self.generate_ray(r, c);
 
-        let mut radiance = Vec3::zeroes();
+        let mut radiance = Vec3::ZERO;
         let mut throughput = Vec3::new(1.0, 1.0, 1.0);
         for bounces in 0..self.max_depth {
             match world.intersects(&ray, Interval::new(eps, f64::INFINITY)) {
                 None => {
-                    radiance = radiance + throughput * Self::ambient_light(&ray);
+                    radiance += throughput * Self::ambient_light(&ray);
                     break;
                 }
                 Some(info) => {
@@ -177,7 +177,7 @@ impl Camera {
 
                     // should a BRDF always return a scatter ray?
                     if let Some(scatter_ray) = scatter {
-                        throughput = throughput * attenuation; // should always execute this line?
+                        throughput *= attenuation; // should always execute this line?
                         ray = scatter_ray;
                     } else {
                         break;
@@ -187,11 +187,11 @@ impl Camera {
 
             if bounces > min_bounces {
                 // russian roulette
-                let p = throughput.x().max(throughput.y()).max(throughput.z());
+                let p = throughput.max_element();
                 if thread_rng().gen::<f64>() > p {
                     break;
                 }
-                throughput = throughput / p;
+                throughput /= p;
             }
         }
         radiance
@@ -199,7 +199,7 @@ impl Camera {
 
     fn _trace(ray: &Ray, depth: usize, world: &World) -> Vec3 {
         if depth == 0 {
-            return Vec3::zeroes();
+            return Vec3::ZERO;
         }
 
         let eps = 1e-3;

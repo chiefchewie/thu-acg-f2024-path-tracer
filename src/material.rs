@@ -42,16 +42,16 @@ impl Material for Diffuse {
         let r2 = rng.gen::<f64>();
         let r2s = r2.sqrt();
         let w = hit_info.normal;
-        let u = if w.x().abs() > 0.1 {
+        let u = if w.x.abs() > 0.1 {
             Vec3::new(0.0, 1.0, 0.0)
         } else {
             Vec3::new(1.0, 0.0, 0.0)
         }
-        .cross(&w)
-        .normalized();
-        let v = w.cross(&u);
+        .cross(w)
+        .normalize();
+        let v = w.cross(u);
         let scatter_dir =
-            (u * r1.cos() * r2s + v * r1.sin() * r2s + w * ((1.0 - r2).sqrt())).normalized();
+            (u * r1.cos() * r2s + v * r1.sin() * r2s + w * ((1.0 - r2).sqrt())).normalize();
         (
             Some(Ray::new(
                 hit_info.point + hit_info.normal * EPS,
@@ -122,7 +122,7 @@ impl Material for Refractive {
             self.refraction_index
         };
 
-        let cos_theta = (-ray.direction()).dot(&hit_info.normal).min(1.0);
+        let cos_theta = (-ray.direction()).dot(hit_info.normal).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
         let sign: f64; // if refracting, need to negate normal when calculating the shadow acne offset
@@ -153,9 +153,7 @@ pub enum MaterialType {
 
 impl Default for MaterialType {
     fn default() -> Self {
-        Self::SPECULAR(Specular {
-            albedo: Vec3::zeroes(),
-        })
+        Self::SPECULAR(Specular { albedo: Vec3::ZERO })
     }
 }
 

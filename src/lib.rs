@@ -2,6 +2,7 @@ use hit_info::HitInfo;
 use interval::Interval;
 use ray::Ray;
 
+pub mod aabb;
 pub mod camera;
 pub mod hit_info;
 pub mod interval;

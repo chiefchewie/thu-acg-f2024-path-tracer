@@ -5,7 +5,7 @@ use path_tracer::{
     material::{Diffuse, MaterialType, Refractive, Specular},
     sphere::Sphere,
     texture::{CheckerTexture, ImageTexture, Texture},
-    vec3::Vec3,
+    vec3::{random_vector, random_vector_range, Vec3},
     World,
 };
 use rand::{thread_rng, Rng};
@@ -52,10 +52,10 @@ fn balls_scene() {
             let center = Vec3::new(a + 0.9 * rng.gen::<f64>(), 0.2, b + 0.9 * rng.gen::<f64>());
             if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
                 let sphere_material = if choose_mat < 0.8 {
-                    let albedo = Vec3::random() * Vec3::random();
+                    let albedo = random_vector() * random_vector();
                     MaterialType::DIFFUSE(Diffuse::from_rgb(albedo))
                 } else if choose_mat < 0.95 {
-                    let albedo = Vec3::rand_range(0.5, 1.0);
+                    let albedo = random_vector_range(0.5, 1.0);
                     MaterialType::SPECULAR(Specular::from_rgb(albedo))
                 } else {
                     MaterialType::REFRACTIVE(Refractive::new(1.5))
@@ -75,7 +75,7 @@ fn balls_scene() {
         }
     }
 
-    ImageTexture::new("image.png").value(0.0, 0.0, &Vec3::zeroes());
+    ImageTexture::new("image.png").value(0.0, 0.0, &Vec3::ZERO);
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
@@ -101,11 +101,7 @@ fn earth_scene() {
     let earth_surface = MaterialType::DIFFUSE(Diffuse::new(Rc::new(earth_texture)));
 
     let mut world = World::new();
-    world.add(Box::new(Sphere::new_still(
-        2.0,
-        Vec3::zeroes(),
-        earth_surface,
-    )));
+    world.add(Box::new(Sphere::new_still(2.0, Vec3::ZERO, earth_surface)));
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;

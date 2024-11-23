@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 #[derive(Copy, Clone)]
 pub struct Interval {
     pub min: f64,
@@ -5,6 +7,12 @@ pub struct Interval {
 }
 
 impl Interval {
+    pub fn from(range: Range<f64>) -> Self {
+        Interval {
+            min: range.start,
+            max: range.end,
+        }
+    }
     pub const fn new(min: f64, max: f64) -> Self {
         Interval { min, max }
     }

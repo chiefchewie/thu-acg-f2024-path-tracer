@@ -23,7 +23,12 @@ impl Sphere {
         }
     }
 
-    pub fn new_moving(radius: f64, position1: Vec3, position2: Vec3, material: MaterialType) -> Sphere {
+    pub fn new_moving(
+        radius: f64,
+        position1: Vec3,
+        position2: Vec3,
+        material: MaterialType,
+    ) -> Sphere {
         Sphere {
             radius: radius.max(0.0),
             position1,
@@ -37,8 +42,8 @@ impl Sphere {
     }
 
     fn get_uv(p: &Vec3) -> (f64, f64) {
-        let theta = (-p.y()).acos();
-        let phi = f64::atan2(-p.z(), p.x()) + PI;
+        let theta = (-p.y).acos();
+        let phi = f64::atan2(-p.z, p.x) + PI;
         (phi / (2.0 * PI), theta / PI)
     }
 }
@@ -47,7 +52,7 @@ impl Hittable for Sphere {
     fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
         let current_center = self.position1 + (self.position2 - self.position1) * (ray.time());
         let l = current_center - ray.origin();
-        let s = Vec3::dot(&l, &ray.direction());
+        let s = Vec3::dot(l, ray.direction());
         let l2 = l.length_squared();
         let r2 = self.radius() * self.radius();
 
@@ -74,7 +79,7 @@ impl Hittable for Sphere {
         hit_info.point = ray.at(intersect);
         hit_info.dist = intersect;
         hit_info.mat = self.material.clone();
-        let normal = (hit_info.point - current_center).normalized();
+        let normal = (hit_info.point - current_center).normalize();
         let uv = Self::get_uv(&normal);
         hit_info.u = uv.0;
         hit_info.v = uv.1;

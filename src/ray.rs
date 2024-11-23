@@ -23,7 +23,7 @@ impl Ray {
     pub fn new(origin: Vec3, direction: Vec3, time: f64) -> Ray {
         Ray {
             origin,
-            direction: direction.normalized(),
+            direction: direction.normalize(),
             time,
         }
     }

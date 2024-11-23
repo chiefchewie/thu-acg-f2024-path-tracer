@@ -56,9 +56,9 @@ impl CheckerTexture {
 
 impl Texture for CheckerTexture {
     fn value(&self, u: f64, v: f64, point: &Vec3) -> Vec3 {
-        let x = (point.x() * self.inv_scale).floor() as i32;
-        let y = (point.y() * self.inv_scale).floor() as i32;
-        let z = (point.z() * self.inv_scale).floor() as i32;
+        let x = (point.x * self.inv_scale).floor() as i32;
+        let y = (point.y * self.inv_scale).floor() as i32;
+        let z = (point.z * self.inv_scale).floor() as i32;
         if (x + y + z) % 2 == 0 {
             self.tex1.value(u, v, point)
         } else {

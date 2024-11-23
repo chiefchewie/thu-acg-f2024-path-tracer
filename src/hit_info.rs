@@ -13,7 +13,7 @@ pub struct HitInfo {
 
 impl HitInfo {
     pub fn set_face_normal(&mut self, ray: &Ray, normal: Vec3) {
-        self.front_face = Vec3::dot(&ray.direction(), &normal) < 0.0;
+        self.front_face = Vec3::dot(ray.direction(), normal) < 0.0;
         self.normal = if self.front_face { normal } else { -normal };
     }
 }
