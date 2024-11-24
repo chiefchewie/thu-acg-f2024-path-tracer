@@ -130,8 +130,9 @@ impl Camera {
     }
 
     fn ambient_light(ray: &Ray) -> Vec3 {
-        let a = 0.5 * (ray.direction().y + 1.0);
-        Vec3::new(1.0, 1.0, 1.0) * (1.0 - a) + Vec3::new(0.5, 0.7, 1.0) * a
+        // let a = 0.5 * (ray.direction().y + 1.0);
+        // Vec3::new(1.0, 1.0, 1.0) * (1.0 - a) + Vec3::new(0.5, 0.7, 1.0) * a
+        Vec3::ZERO
     }
 
     fn generate_ray(&self, r: usize, c: usize) -> Ray {
@@ -168,10 +169,19 @@ impl Camera {
                 // TODO instead of a switch, eval diff materials randomly based on properties?
                 Some(info) => {
                     // attenuation = brdf / pdf in the lingo
+                    let emission = match info.mat {
+                        MaterialType::DIFFUSE(ref diffuse) => diffuse.emitted(info.u, info.v, info.point),
+                        MaterialType::SPECULAR(ref specular) => specular.emitted(info.u, info.v, info.point),
+                        MaterialType::REFRACTIVE(ref refractive) => refractive.emitted(info.u, info.v, info.point),
+                        MaterialType::LIGHT(ref diffuse_light) => diffuse_light.emitted(info.u, info.v, info.point),
+                    };
+                    radiance += emission * throughput;
+
                     let (attenuation, scatter) = match info.mat {
                         MaterialType::DIFFUSE(ref diffuse) => diffuse.scatter(&ray, &info),
                         MaterialType::SPECULAR(ref specular) => specular.scatter(&ray, &info),
                         MaterialType::REFRACTIVE(ref refractive) => refractive.scatter(&ray, &info),
+                        MaterialType::LIGHT(ref diffuse_light) => diffuse_light.scatter(&ray, &info),
                     };
 
                     // should a BRDF always return a scatter ray?
@@ -196,26 +206,26 @@ impl Camera {
         radiance
     }
 
-    fn _trace(ray: &Ray, depth: usize, world: &World) -> Vec3 {
-        if depth == 0 {
-            return Vec3::ZERO;
-        }
+    // fn _trace(ray: &Ray, depth: usize, world: &World) -> Vec3 {
+    //     if depth == 0 {
+    //         return Vec3::ZERO;
+    //     }
 
-        let eps = 1e-3;
-        match world.intersects(ray, Interval::new(eps, f64::INFINITY)) {
-            Some(info) => {
-                let (attenuation, scatter) = match info.mat {
-                    MaterialType::DIFFUSE(ref material) => material.scatter(ray, &info),
-                    MaterialType::SPECULAR(material) => material.scatter(ray, &info),
-                    MaterialType::REFRACTIVE(material) => material.scatter(ray, &info),
-                };
-                if let Some(scatter_ray) = scatter {
-                    Self::_trace(&scatter_ray, depth - 1, world) * attenuation
-                } else {
-                    attenuation
-                }
-            }
-            None => Self::ambient_light(ray),
-        }
-    }
+    //     let eps = 1e-3;
+    //     match world.intersects(ray, Interval::new(eps, f64::INFINITY)) {
+    //         Some(info) => {
+    //             let (attenuation, scatter) = match info.mat {
+    //                 MaterialType::DIFFUSE(ref material) => material.scatter(ray, &info),
+    //                 MaterialType::SPECULAR(material) => material.scatter(ray, &info),
+    //                 MaterialType::REFRACTIVE(material) => material.scatter(ray, &info),
+    //             };
+    //             if let Some(scatter_ray) = scatter {
+    //                 Self::_trace(&scatter_ray, depth - 1, world) * attenuation
+    //             } else {
+    //                 attenuation
+    //             }
+    //         }
+    //         None => Self::ambient_light(ray),
+    //     }
+    // }
 }

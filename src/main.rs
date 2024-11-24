@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use path_tracer::{
     camera::Camera,
-    material::{Diffuse, MaterialType, Refractive, Specular},
+    material::{Diffuse, DiffuseLight, MaterialType, Refractive, Specular},
     quad::Quad,
     sphere::Sphere,
     texture::{CheckerTexture, ImageTexture},
@@ -172,12 +172,124 @@ fn quads_scene() {
     camera.render(&world);
 }
 
+fn basic_light_scene() {
+    let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
+    let diffuse_light = MaterialType::LIGHT(DiffuseLight::from_rgb(Vec3::new(14.0, 14.0, 14.0)));
+
+    let mut world = World::new();
+    world.add(Sphere::new_still(
+        1000.0,
+        Vec3::new(0.0, -1000.0, 0.0),
+        red.clone(),
+    ));
+    world.add(Sphere::new_still(2.0, Vec3::new(0.0, 2.0, 0.0), red));
+    world.add(Quad::new(
+        Vec3::new(3.0, 1.0, -2.0),
+        Vec3::new(2.0, 0.0, 0.0),
+        Vec3::new(0.0, 2.0, 0.0),
+        diffuse_light,
+    ));
+
+    world.build_bvh();
+
+    let mut camera = Camera::new();
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 400;
+    camera.samples_per_pixel = 200;
+    camera.max_depth = 50;
+
+    camera.vfov = 20.0;
+    camera.look_from = Vec3::new(26.0, 3.0, 6.0);
+    camera.look_at = Vec3::new(0.0, 2.0, 0.0);
+    camera.vup = Vec3::new(0.0, 1.0, 0.0);
+
+    camera.blur_strength = 0.5;
+    camera.focal_length = 10.0;
+    camera.defocus_angle = 0.0;
+
+    camera.init();
+    camera.render(&world);
+}
+
+fn cornell_box_scene() {
+    let mut world = World::new();
+
+    let mat1 = MaterialType::REFRACTIVE(Refractive::new(1.5));
+    world.add(Sphere::new_still(105.0, Vec3::new(413.0, 170.0, 372.0), mat1));
+
+    let mat2 = MaterialType::SPECULAR(Specular::new(0.7, 0.6, 0.5));
+    world.add(Sphere::new_still(135.0, Vec3::new(113.0, 170.0, 372.0), mat2));
+
+    let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
+    let white = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.73, 0.73, 0.73)));
+    let green = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.12, 0.45, 0.15)));
+    let diffuse_light = MaterialType::LIGHT(DiffuseLight::from_rgb(Vec3::new(25.0, 25.0, 25.0)));
+    world.add(Quad::new(
+        Vec3::new(555.0, 0.0, 0.0),
+        Vec3::new(0.0, 555.0, 0.0),
+        Vec3::new(0.0, 0.0, 555.0),
+        green,
+    ));
+    world.add(Quad::new(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 555.0, 0.0),
+        Vec3::new(0.0, 0.0, 555.0),
+        red,
+    ));
+    world.add(Quad::new(
+        Vec3::new(343.0, 554.0, 332.0),
+        Vec3::new(-130.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, -105.0),
+        diffuse_light,
+    ));
+    world.add(Quad::new(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(555.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 555.0),
+        white.clone(),
+    ));
+    world.add(Quad::new(
+        Vec3::new(555.0, 555.0, 555.0),
+        Vec3::new(-555.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, -555.0),
+        white.clone(),
+    ));
+    world.add(Quad::new(
+        Vec3::new(0.0, 0.0, 555.0),
+        Vec3::new(555.0, 0.0, 0.0),
+        Vec3::new(0.0, 555.0, 0.0),
+        white.clone(),
+    ));
+
+    world.build_bvh();
+
+    let mut camera = Camera::new();
+    camera.aspect_ratio = 4.0 / 3.0;
+    camera.image_width = 1024;
+    camera.samples_per_pixel = 400;
+    camera.max_depth = 20;
+
+    camera.vfov = 40.0;
+    camera.look_from = Vec3::new(278.0, 278.0, -800.0);
+    camera.look_at = Vec3::new(278.0, 278.0, 0.0);
+    camera.vup = Vec3::new(0.0, 1.0, 0.0);
+
+    camera.blur_strength = 0.5;
+    camera.focal_length = 10.0;
+    camera.defocus_angle = 0.0;
+
+    camera.init();
+    camera.render(&world);
+}
+
 fn main() {
-    let x = 3;
+    let x = 5;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),
         3 => quads_scene(),
+        4 => basic_light_scene(),
+        5 => cornell_box_scene(),
         _ => (),
     }
 }

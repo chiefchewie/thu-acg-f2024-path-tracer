@@ -14,6 +14,9 @@ const EPS: f64 = 1e-3;
 pub trait Material {
     /// returns: attenuation (brdf/pdf), and optionally the scattered ray
     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>);
+    fn emitted(&self, _u: f64, _v: f64, _p: Vec3) -> Vec3 {
+        Vec3::ZERO
+    }
 }
 
 #[derive(Clone)]
@@ -144,10 +147,38 @@ impl Material for Refractive {
 }
 
 #[derive(Clone)]
+pub struct DiffuseLight {
+    texture: Rc<dyn Texture>,
+}
+
+impl DiffuseLight {
+    pub fn new(texture: Rc<dyn Texture>) -> Self {
+        Self { texture }
+    }
+
+    pub fn from_rgb(rgb: Vec3) -> Self {
+        Self {
+            texture: Rc::new(SolidColorTexture::from_vec(rgb)),
+        }
+    }
+}
+
+impl Material for DiffuseLight {
+    fn emitted(&self, u: f64, v: f64, p: Vec3) -> Vec3 {
+        self.texture.value(u, v, &p) 
+    }
+    
+    fn scatter(&self, _ray: &Ray,_hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
+        (Vec3::ZERO, None)
+    }
+}
+
+#[derive(Clone)]
 pub enum MaterialType {
     DIFFUSE(Diffuse),
     SPECULAR(Specular),
     REFRACTIVE(Refractive),
+    LIGHT(DiffuseLight)
 }
 
 impl Default for MaterialType {
