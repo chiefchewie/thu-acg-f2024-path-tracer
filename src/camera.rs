@@ -122,7 +122,6 @@ impl Camera {
     }
 
     // random point on the unit circle for offsets in blur anti-aliasing and depth-of-field
-    // TODO make this a vec2 for clarity
     fn random_offsets() -> Vec2 {
         let mut rng = rand::thread_rng();
         let radius = rng.gen::<f64>().sqrt();
@@ -166,8 +165,8 @@ impl Camera {
                     radiance += throughput * Self::ambient_light(&ray);
                     break;
                 }
+                // TODO instead of a switch, eval diff materials randomly based on properties?
                 Some(info) => {
-                    // TODO instead of a switch, eval diff materials randomly based on properties?
                     // attenuation = brdf / pdf in the lingo
                     let (scatter, attenuation) = match info.mat {
                         MaterialType::DIFFUSE(ref diffuse) => diffuse.scatter(&ray, &info),

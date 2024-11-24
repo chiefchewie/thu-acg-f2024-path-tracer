@@ -21,6 +21,7 @@ impl BVH {
         Self::build_recursive(primitives)
     }
 
+    // TODO surface area heuristic instead of splitting along longest axis
     fn build_recursive(mut primitives: Vec<Rc<dyn Hittable>>) -> BVHNode {
         if primitives.len() == 1 {
             let bbox = primitives[0].bounding_box();
@@ -97,7 +98,10 @@ impl Hittable for BVHNode {
         }
 
         match self {
-            BVHNode::Leaf { bbox: _, primitives } => {
+            BVHNode::Leaf {
+                bbox: _,
+                primitives,
+            } => {
                 let mut hit_info: Option<HitInfo> = None;
                 let mut closest_hit = ray_t.max;
                 for p in primitives {
@@ -108,7 +112,11 @@ impl Hittable for BVHNode {
                 }
                 hit_info
             }
-            BVHNode::Internal { bbox: _, left, right } => {
+            BVHNode::Internal {
+                bbox: _,
+                left,
+                right,
+            } => {
                 let left_hit = left.intersects(ray, ray_t);
                 let right_hit = if let Some(ref hit) = left_hit {
                     right.intersects(ray, Interval::new(ray_t.min, hit.dist))

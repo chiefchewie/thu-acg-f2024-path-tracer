@@ -13,6 +13,7 @@ pub mod hit_info;
 pub mod interval;
 pub mod light;
 pub mod material;
+pub mod quad;
 pub mod ray;
 pub mod sphere;
 pub mod texture;

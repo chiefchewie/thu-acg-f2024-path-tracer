@@ -87,18 +87,18 @@ impl Hittable for Sphere {
             return None;
         }
 
-        let mut hit_info = HitInfo {
-            ..Default::default()
-        };
-        hit_info.point = ray.at(intersect);
-        hit_info.dist = intersect;
-        hit_info.mat = self.material.clone();
-        let normal = (hit_info.point - current_center).normalize();
-        let uv = Self::get_uv(&normal);
-        hit_info.u = uv.0;
-        hit_info.v = uv.1;
-        hit_info.set_face_normal(ray, normal);
-        Some(hit_info)
+        let point = ray.at(intersect);
+        let normal = (point - current_center).normalize();
+        let (u, v) = Self::get_uv(&normal);
+        Some(HitInfo::new(
+            ray,
+            point,
+            normal,
+            intersect,
+            self.material.clone(),
+            u,
+            v,
+        ))
     }
 
     fn bounding_box(&self) -> AABB {
