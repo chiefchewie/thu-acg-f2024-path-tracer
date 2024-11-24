@@ -1,63 +1,70 @@
-use crate::{
-    interval::Interval,
-    ray::Ray,
-    vec3::Vec3,
-};
+use crate::{interval::Interval, ray::Ray, vec3::Vec3};
 
+#[derive(Clone, Copy)]
 pub struct AABB {
-    x: Interval,
-    y: Interval,
-    z: Interval,
+    min: Vec3,
+    max: Vec3,
 }
 
 impl AABB {
-    pub fn new(x: Interval, y: Interval, z: Interval) -> AABB {
-        AABB { x, y, z }
+    pub fn new(a: Vec3, b: Vec3) -> AABB {
+        let min = a.min(b);
+        let max = a.max(b);
+        AABB { min, max }
     }
 
-    pub fn from(a: &Vec3, b: &Vec3) -> AABB {
-        let x = if a.x < b.x {
-            Interval::new(a.x, b.x)
-        } else {
-            Interval::new(b.x, a.x)
-        };
+    pub fn union(self, other: AABB) -> AABB {
+        AABB {
+            min: self.min.min(other.min),
+            max: self.max.max(other.max),
+        }
+    }
 
-        let y = if a.y < b.y {
-            Interval::new(a.y, b.y)
-        } else {
-            Interval::new(b.y, a.y)
-        };
-
-        let z = if a.z < b.z {
-            Interval::new(a.z, b.z)
-        } else {
-            Interval::new(b.z, a.z)
-        };
-
-        AABB { x, y, z }
+    pub fn centroid(&self) -> Vec3 {
+        0.5 * (self.max + self.max)
     }
 
     pub fn intersects(&self, ray: &Ray, ray_t: Interval) -> bool {
-        let sizes = Vec3::new(
-            self.x.size() / 2.0,
-            self.y.size() / 2.0,
-            self.z.size() / 2.0,
-        );
-        let ro = ray.origin() - sizes;
-        let rd = ray.direction();
+        let mut t_min = (self.min.x - ray.origin().x) / ray.direction().x;
+        let mut t_max = (self.max.x - ray.origin().x) / ray.direction().x;
+        if t_min > t_max {
+            std::mem::swap(&mut t_min, &mut t_max);
+        }
 
-        let m = 1.0 / rd;
-        let n = m * ro;
-        let k = m.abs() * sizes;
+        let mut t_enter = t_min;
+        let mut t_exit = t_max;
 
-        let t1 = -n - k;
-        let t2 = -n + k;
-        let t_n = t1.max_element();
-        let t_f = t2.min_element();
-        if t_n > t_f {
-            false
-        } else {
-            ray_t.surrounds(t_n)
+        for (min, max, origin, direction) in [
+            (self.min.y, self.max.y, ray.origin().y, ray.direction().y),
+            (self.min.z, self.max.z, ray.origin().z, ray.direction().z),
+        ] {
+            let mut t_min = (min - origin) / direction;
+            let mut t_max = (max - origin) / direction;
+            if t_min > t_max {
+                std::mem::swap(&mut t_min, &mut t_max);
+            }
+
+            t_enter = t_enter.max(t_min);
+            t_exit = t_exit.min(t_max);
+
+            if t_enter > t_exit {
+                return false; // No intersection
+            }
+        }
+
+        t_enter <= ray_t.max && t_exit >= ray_t.min
+    }
+
+    pub fn extent(&self) -> Vec3 {
+        self.max - self.min
+    }
+}
+
+impl Default for AABB {
+    fn default() -> Self {
+        Self {
+            min: Vec3::ZERO,
+            max: Vec3::ZERO,
         }
     }
 }
