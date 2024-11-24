@@ -168,7 +168,7 @@ impl Camera {
                 // TODO instead of a switch, eval diff materials randomly based on properties?
                 Some(info) => {
                     // attenuation = brdf / pdf in the lingo
-                    let (scatter, attenuation) = match info.mat {
+                    let (attenuation, scatter) = match info.mat {
                         MaterialType::DIFFUSE(ref diffuse) => diffuse.scatter(&ray, &info),
                         MaterialType::SPECULAR(ref specular) => specular.scatter(&ray, &info),
                         MaterialType::REFRACTIVE(ref refractive) => refractive.scatter(&ray, &info),
@@ -204,7 +204,7 @@ impl Camera {
         let eps = 1e-3;
         match world.intersects(ray, Interval::new(eps, f64::INFINITY)) {
             Some(info) => {
-                let (scatter, attenuation) = match info.mat {
+                let (attenuation, scatter) = match info.mat {
                     MaterialType::DIFFUSE(ref material) => material.scatter(ray, &info),
                     MaterialType::SPECULAR(material) => material.scatter(ray, &info),
                     MaterialType::REFRACTIVE(material) => material.scatter(ray, &info),

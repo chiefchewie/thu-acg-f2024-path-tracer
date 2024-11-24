@@ -12,9 +12,8 @@ use crate::{
 const EPS: f64 = 1e-3;
 
 pub trait Material {
-    // returns a bool if this material scatters or not
-    // if scatter: then also contains the scattered ray and attenutation vector:w
-    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Option<Ray>, Vec3);
+    /// returns: attenuation (brdf/pdf), and optionally the scattered ray
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>);
 }
 
 #[derive(Clone)]
@@ -36,7 +35,7 @@ impl Diffuse {
 
 impl Material for Diffuse {
     /// Lambertian BRDF
-    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Option<Ray>, Vec3) {
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
         let mut rng = thread_rng();
         let r1 = rng.gen_range(0.0..2.0 * PI);
         let r2 = rng.gen::<f64>();
@@ -53,12 +52,12 @@ impl Material for Diffuse {
         let scatter_dir =
             (u * r1.cos() * r2s + v * r1.sin() * r2s + w * ((1.0 - r2).sqrt())).normalize();
         (
+            self.texture.value(hit_info.u, hit_info.v, &hit_info.point),
             Some(Ray::new(
                 hit_info.point + hit_info.normal * EPS,
                 scatter_dir,
                 ray.time(),
             )),
-            self.texture.value(hit_info.u, hit_info.v, &hit_info.point),
         )
     }
 }
@@ -81,15 +80,15 @@ impl Specular {
 }
 
 impl Material for Specular {
-    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Option<Ray>, Vec3) {
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
         let refl_dir = ray.direction().reflect(hit_info.normal);
         (
+            self.albedo,
             Some(Ray::new(
                 hit_info.point + hit_info.normal * EPS,
                 refl_dir,
                 ray.time(),
             )),
-            self.albedo,
         )
     }
 }
@@ -112,7 +111,7 @@ impl Refractive {
 }
 
 impl Material for Refractive {
-    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Option<Ray>, Vec3) {
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
         let mut rng = rand::thread_rng();
         let eps = 1e-3;
         let attenuation = Vec3::new(1.0, 1.0, 1.0);
@@ -140,7 +139,7 @@ impl Material for Refractive {
             dir,
             ray.time(),
         );
-        (Some(ray), attenuation)
+        (attenuation, Some(ray))
     }
 }
 
@@ -156,54 +155,3 @@ impl Default for MaterialType {
         Self::SPECULAR(Specular { albedo: Vec3::ZERO })
     }
 }
-
-/*
-
-#[derive(Debug, Clone, Copy, Default)]
-pub enum MaterialType {
-    #[default]
-    DIFFUSE,
-    SPECULAR, //REFRACTIVE
-}
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Material {
-    albedo: Vec3,
-    mat_type: MaterialType,
-}
-
-// TODO smoothness param to blend between diffuse and specular?
-impl Material {
-    pub fn new(albedo: Vec3, mat_type: MaterialType) -> Material {
-        Material { albedo, mat_type }
-    }
-
-    pub fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
-        match self.mat_type {
-            MaterialType::DIFFUSE => self.lambertian_scatter(ray, hit_info),
-            MaterialType::SPECULAR => self.metal_scatter(ray, hit_info),
-            // MaterialType::REFRACTIVE => self.refractive_scatter(ray, hit_info),
-        }
-    }
-
-    // returns a bool if this material scatters or not
-    // if scatter: then also contains attenutation vector, scattered ray
-    fn lambertian_scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
-        let mut scatter_dir = Vec3::random_dir() + hit_info.normal;
-        if scatter_dir.near_zero() {
-            scatter_dir = hit_info.normal;
-        }
-
-        (true, self.albedo, Ray::new(hit_info.point, scatter_dir))
-    }
-
-    fn metal_scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (bool, Vec3, Ray) {
-        let refl = ray.direction().reflect(hit_info.normal);
-        (true, self.albedo, Ray::new(hit_info.point, refl))
-    }
-
-    // fn refractive_scatter(&self, ray:&Ray,hit_info:&HitInfo) -> (bool, Vec3, Ray) {
-
-    // }
-}
-
- */
