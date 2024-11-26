@@ -117,13 +117,13 @@ impl Hittable for BVHNode {
                 left,
                 right,
             } => {
-                let left_hit = left.intersects(ray, ray_t);
-                let right_hit = if let Some(ref hit) = left_hit {
-                    right.intersects(ray, Interval::new(ray_t.min, hit.dist))
+                let left_hit_info = left.intersects(ray, ray_t);
+                let right_hit_info = if let Some(ref info) = left_hit_info {
+                    right.intersects(ray, Interval::new(ray_t.min, info.dist))
                 } else {
                     right.intersects(ray, ray_t)
                 };
-                match (left_hit, right_hit) {
+                match (left_hit_info, right_hit_info) {
                     (None, None) => None,
                     (_, Some(info)) => Some(info),
                     (Some(info), None) => Some(info),

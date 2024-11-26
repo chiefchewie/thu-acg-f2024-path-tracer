@@ -161,7 +161,7 @@ impl Camera {
         let mut radiance = Vec3::ZERO;
         let mut throughput = Vec3::new(1.0, 1.0, 1.0);
         for bounces in 0..self.max_depth {
-            let Some(info) = world.intersects(&ray, Interval::new(eps, f64::INFINITY)) else {
+            let Some(hit_info) = world.intersects(&ray, Interval::new(eps, f64::INFINITY)) else {
                 radiance += throughput * self.ambient_light(&ray);
                 break;
             };
@@ -189,39 +189,39 @@ impl Camera {
             */
             // explictily sampling point lights for diffuse materials
             // TODO explicitly sample ALL lights, for ALL materials
-            if let MaterialType::DIFFUSE(_) = info.mat {
+            if let MaterialType::DIFFUSE(_) = hit_info.mat {
                 for light in &world.lights {
-                    let result = world.shadow_ray(info.point, light.position, ray.time());
+                    let result = world.shadow_ray(hit_info.point, light.position, ray.time());
                     if result {
-                        let light_dir = (light.position - info.point).normalize();
-                        let len = (light.position - info.point).length();
+                        let light_dir = (light.position - hit_info.point).normalize();
+                        let len = (light.position - hit_info.point).length();
                         let color =
-                            (light.power / (len * len)) * info.normal.dot(light_dir).max(0.0);
+                            (light.power / (len * len)) * hit_info.normal.dot(light_dir).max(0.0);
                         radiance += throughput * color;
                     }
                 }
             }
 
             // attenuation = brdf / pdf in the lingo
-            let emission = match info.mat {
-                MaterialType::DIFFUSE(ref diffuse) => diffuse.emitted(info.u, info.v, info.point),
+            let emission = match hit_info.mat {
+                MaterialType::DIFFUSE(ref diffuse) => diffuse.emitted(hit_info.u, hit_info.v, hit_info.point),
                 MaterialType::SPECULAR(ref specular) => {
-                    specular.emitted(info.u, info.v, info.point)
+                    specular.emitted(hit_info.u, hit_info.v, hit_info.point)
                 }
                 MaterialType::REFRACTIVE(ref refractive) => {
-                    refractive.emitted(info.u, info.v, info.point)
+                    refractive.emitted(hit_info.u, hit_info.v, hit_info.point)
                 }
                 MaterialType::LIGHT(ref diffuse_light) => {
-                    diffuse_light.emitted(info.u, info.v, info.point)
+                    diffuse_light.emitted(hit_info.u, hit_info.v, hit_info.point)
                 }
             };
             radiance += emission * throughput;
 
-            let (attenuation, scatter) = match info.mat {
-                MaterialType::DIFFUSE(ref diffuse) => diffuse.scatter(&ray, &info),
-                MaterialType::SPECULAR(ref specular) => specular.scatter(&ray, &info),
-                MaterialType::REFRACTIVE(ref refractive) => refractive.scatter(&ray, &info),
-                MaterialType::LIGHT(ref diffuse_light) => diffuse_light.scatter(&ray, &info),
+            let (attenuation, scatter) = match hit_info.mat {
+                MaterialType::DIFFUSE(ref diffuse) => diffuse.scatter(&ray, &hit_info),
+                MaterialType::SPECULAR(ref specular) => specular.scatter(&ray, &hit_info),
+                MaterialType::REFRACTIVE(ref refractive) => refractive.scatter(&ray, &hit_info),
+                MaterialType::LIGHT(ref diffuse_light) => diffuse_light.scatter(&ray, &hit_info),
             };
 
             // should a BRDF always return a scatter ray?
