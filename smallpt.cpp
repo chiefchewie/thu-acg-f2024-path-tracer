@@ -1,8 +1,8 @@
-#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2008
+#include <math.h>   // smallpt, a Path Tracer by Kevin Beason, 2009
 #include <stdio.h>  //        Remove "-fopenmp" for g++ version < 4.2
-#include <stdlib.h> // Make : g++ -O3 -fopenmp smallpt.cpp -o smallpt
+#include <stdlib.h> // Make : g++ -O3 -fopenmp explicit.cpp -o explicit
 
-struct Vec {        // Usage: time ./smallpt 5000 && xv image.ppm
+struct Vec {        // Usage: time ./explicit 16 && xv image.ppm
   double x, y, z;   // position, also color (r,g,b)
   Vec(double x_ = 0, double y_ = 0, double z_ = 0) {
     x = x_;
@@ -55,9 +55,10 @@ Sphere spheres[] = {
            DIFF),                                                      // Top
     Sphere(16.5, Vec(27, 16.5, 47), Vec(), Vec(1, 1, 1) * .999, SPEC), // Mirr
     Sphere(16.5, Vec(73, 16.5, 78), Vec(), Vec(1, 1, 1) * .999, REFR), // Glas
-    Sphere(600, Vec(50, 681.6 - .27, 81.6), Vec(12, 12, 12), Vec(),
-           DIFF) // Lite
+    Sphere(1.5, Vec(50, 81.6 - 16.5, 81.6), Vec(4, 4, 4) * 100, Vec(),
+           DIFF), // Lite
 };
+int numSpheres = sizeof(spheres) / sizeof(Sphere);
 inline double clamp(double x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
 inline int toInt(double x) { return int(pow(clamp(x), 1 / 2.2) * 255 + .5); }
 inline bool intersect(const Ray &r, double &t, int &id) {
@@ -69,7 +70,7 @@ inline bool intersect(const Ray &r, double &t, int &id) {
     }
   return t < inf;
 }
-Vec radiance(const Ray &r, int depth, unsigned short *Xi) {
+Vec radiance(const Ray &r, int depth, unsigned short *Xi, int E = 1) {
   double t;   // distance to intersection
   int id = 0; // id of intersected object
   if (!intersect(r, t, id))
@@ -78,17 +79,41 @@ Vec radiance(const Ray &r, int depth, unsigned short *Xi) {
   Vec x = r.o + r.d * t, n = (x - obj.p).norm(),
       nl = n.dot(r.d) < 0 ? n : n * -1, f = obj.c;
   double p = f.x > f.y && f.x > f.z ? f.x : f.y > f.z ? f.y : f.z; // max refl
-  if (++depth > 5)
+  if (++depth > 5 || !p)
     if (erand48(Xi) < p)
       f = f * (1 / p);
     else
-      return obj.e;       // R.R.
+      return obj.e * E;
   if (obj.refl == DIFF) { // Ideal DIFFUSE reflection
     double r1 = 2 * M_PI * erand48(Xi), r2 = erand48(Xi), r2s = sqrt(r2);
     Vec w = nl, u = ((fabs(w.x) > .1 ? Vec(0, 1) : Vec(1)) % w).norm(),
         v = w % u;
     Vec d = (u * cos(r1) * r2s + v * sin(r1) * r2s + w * sqrt(1 - r2)).norm();
-    return obj.e + f.mult(radiance(Ray(x, d), depth, Xi));
+
+    // Loop over any lights
+    Vec e;
+    for (int i = 0; i < numSpheres; i++) {
+      const Sphere &s = spheres[i];
+      if (s.e.x <= 0 && s.e.y <= 0 && s.e.z <= 0)
+        continue; // skip non-lights
+
+      Vec sw = s.p - x,
+          su = ((fabs(sw.x) > .1 ? Vec(0, 1) : Vec(1)) % sw).norm(),
+          sv = sw % su;
+      double cos_a_max = sqrt(1 - s.rad * s.rad / (x - s.p).dot(x - s.p));
+      double eps1 = erand48(Xi), eps2 = erand48(Xi);
+      double cos_a = 1 - eps1 + eps1 * cos_a_max;
+      double sin_a = sqrt(1 - cos_a * cos_a);
+      double phi = 2 * M_PI * eps2;
+      Vec l = su * cos(phi) * sin_a + sv * sin(phi) * sin_a + sw * cos_a;
+      l.norm();
+      if (intersect(Ray(x, l), t, id) && id == i) { // shadow ray
+        double omega = 2 * M_PI * (1 - cos_a_max);
+        e = e + f.mult(s.e * l.dot(nl) * omega) * M_1_PI; // 1/pi for brdf
+      }
+    }
+
+    return obj.e * E + e + f.mult(radiance(Ray(x, d), depth, Xi, 0));
   } else if (obj.refl == SPEC) // Ideal SPECULAR reflection
     return obj.e +
            f.mult(radiance(Ray(x, r.d - n * 2 * n.dot(r.d)), depth, Xi));

@@ -1,4 +1,4 @@
-use core::f64;
+use core::{f64, panic};
 use std::{f64::consts::PI, fs::File, time::Instant};
 
 use crate::{
@@ -131,6 +131,7 @@ impl Camera {
     }
 
     fn ambient_light(&self, ray: &Ray) -> Vec3 {
+        let _ = ray;
         self.ambient_light
     }
 
@@ -160,37 +161,75 @@ impl Camera {
         let mut radiance = Vec3::ZERO;
         let mut throughput = Vec3::new(1.0, 1.0, 1.0);
         for bounces in 0..self.max_depth {
-            match world.intersects(&ray, Interval::new(eps, f64::INFINITY)) {
-                None => {
-                    radiance += throughput * self.ambient_light(&ray);
-                    break;
+            let Some(info) = world.intersects(&ray, Interval::new(eps, f64::INFINITY)) else {
+                radiance += throughput * self.ambient_light(&ray);
+                break;
+            };
+
+            // light sampling
+            /*
+            // Evaluate direct light (next event estimation), start by sampling one light
+            Light light;
+            float lightWeight;
+            if (sampleLightRIS(rngState, payload.hitPosition, geometryNormal, light, lightWeight)) {
+
+                // Prepare data needed to evaluate the light
+                float3 lightVector;
+                float lightDistance;
+                getLightData(light, payload.hitPosition, lightVector, lightDistance);
+                float3 L = normalize(lightVector);
+
+                // Cast shadow ray towards the selected light
+                if (SHADOW_RAY_IN_RIS || castShadowRay(payload.hitPosition, geometryNormal, L, lightDistance))
+                {
+                    // If light is not in shadow, evaluate BRDF and accumulate its contribution into radiance
+                    radiance += throughput * evalCombinedBRDF(shadingNormal, L, V, material) * (getLightIntensityAtPoint(light, lightDistance) * lightWeight);
                 }
-                // TODO instead of a switch, eval diff materials randomly based on properties?
-                Some(info) => {
-                    // attenuation = brdf / pdf in the lingo
-                    let emission = match info.mat {
-                        MaterialType::DIFFUSE(ref diffuse) => diffuse.emitted(info.u, info.v, info.point),
-                        MaterialType::SPECULAR(ref specular) => specular.emitted(info.u, info.v, info.point),
-                        MaterialType::REFRACTIVE(ref refractive) => refractive.emitted(info.u, info.v, info.point),
-                        MaterialType::LIGHT(ref diffuse_light) => diffuse_light.emitted(info.u, info.v, info.point),
-                    };
-                    radiance += emission * throughput;
-
-                    let (attenuation, scatter) = match info.mat {
-                        MaterialType::DIFFUSE(ref diffuse) => diffuse.scatter(&ray, &info),
-                        MaterialType::SPECULAR(ref specular) => specular.scatter(&ray, &info),
-                        MaterialType::REFRACTIVE(ref refractive) => refractive.scatter(&ray, &info),
-                        MaterialType::LIGHT(ref diffuse_light) => diffuse_light.scatter(&ray, &info),
-                    };
-
-                    // should a BRDF always return a scatter ray?
-                    if let Some(scatter_ray) = scatter {
-                        throughput *= attenuation; // should always execute this line?
-                        ray = scatter_ray;
-                    } else {
-                        break;
+            }
+            */
+            // explictily sampling point lights for diffuse materials
+            // TODO explicitly sample ALL lights, for ALL materials
+            if let MaterialType::DIFFUSE(_) = info.mat {
+                for light in &world.lights {
+                    let result = world.shadow_ray(info.point, light.position, ray.time());
+                    if result {
+                        let light_dir = (light.position - info.point).normalize();
+                        let len = (light.position - info.point).length();
+                        let color =
+                            (light.power / (len * len)) * info.normal.dot(light_dir).max(0.0);
+                        radiance += throughput * color;
                     }
                 }
+            }
+
+            // attenuation = brdf / pdf in the lingo
+            let emission = match info.mat {
+                MaterialType::DIFFUSE(ref diffuse) => diffuse.emitted(info.u, info.v, info.point),
+                MaterialType::SPECULAR(ref specular) => {
+                    specular.emitted(info.u, info.v, info.point)
+                }
+                MaterialType::REFRACTIVE(ref refractive) => {
+                    refractive.emitted(info.u, info.v, info.point)
+                }
+                MaterialType::LIGHT(ref diffuse_light) => {
+                    diffuse_light.emitted(info.u, info.v, info.point)
+                }
+            };
+            radiance += emission * throughput;
+
+            let (attenuation, scatter) = match info.mat {
+                MaterialType::DIFFUSE(ref diffuse) => diffuse.scatter(&ray, &info),
+                MaterialType::SPECULAR(ref specular) => specular.scatter(&ray, &info),
+                MaterialType::REFRACTIVE(ref refractive) => refractive.scatter(&ray, &info),
+                MaterialType::LIGHT(ref diffuse_light) => diffuse_light.scatter(&ray, &info),
+            };
+
+            // should a BRDF always return a scatter ray?
+            if let Some(scatter_ray) = scatter {
+                throughput *= attenuation; // should always execute this line?
+                ray = scatter_ray;
+            } else {
+                break;
             }
 
             if bounces > min_bounces {

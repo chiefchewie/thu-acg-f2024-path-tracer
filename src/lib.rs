@@ -4,9 +4,12 @@ use aabb::AABB;
 use bvh::{BVHNode, BVH};
 use hit_info::HitInfo;
 use interval::Interval;
+use light::PointLight;
 use ray::Ray;
+use vec3::Vec3;
 
 pub mod aabb;
+pub mod brdf;
 pub mod bvh;
 pub mod camera;
 pub mod hit_info;
@@ -27,6 +30,7 @@ pub trait Hittable {
 
 pub struct World {
     objects: Vec<Rc<dyn Hittable>>,
+    lights: Vec<PointLight>, // indices of light sources
     bbox: AABB,
     bvh: Option<BVHNode>,
 }
@@ -35,18 +39,32 @@ impl World {
     pub fn new() -> World {
         World {
             objects: vec![],
+            lights: vec![],
             bbox: AABB::default(),
             bvh: None,
         }
     }
 
+    pub fn add_light(&mut self, light: PointLight) {
+        self.lights.push(light);
+    }
+
     pub fn add<T: Hittable + 'static>(&mut self, obj: T) {
         self.bbox = AABB::union(self.bbox, obj.bounding_box());
-        self.objects.push(Rc::new(obj));
+        let rc = Rc::new(obj);
+        self.objects.push(rc.clone());
     }
 
     pub fn build_bvh(&mut self) {
         self.bvh = Some(BVH::build(self.objects.clone()));
+    }
+    fn shadow_ray(&self, origin: Vec3, light_pos: Vec3, time: f64) -> bool {
+        let dir = (light_pos - origin).normalize();
+        let max_dist = (light_pos - origin).length();
+        match self.intersects(&Ray::new(origin, dir, time), Interval::new(1e-3, max_dist)) {
+            Some(_) => false,
+            None => true,
+        }
     }
 }
 

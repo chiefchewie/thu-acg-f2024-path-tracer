@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use path_tracer::{
     camera::Camera,
+    light::PointLight,
     material::{Diffuse, DiffuseLight, MaterialType, Refractive, Specular},
     quad::Quad,
     sphere::Sphere,
@@ -194,16 +195,21 @@ fn quads_scene() {
 }
 
 fn basic_light_scene() {
-    let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
-    let diffuse_light = MaterialType::LIGHT(DiffuseLight::from_rgb(Vec3::new(14.0, 14.0, 14.0)));
-
     let mut world = World::new();
+
+    let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
     world.add(Sphere::new_still(
         1000.0,
         Vec3::new(0.0, -1000.0, 0.0),
         red.clone(),
     ));
-    world.add(Sphere::new_still(2.0, Vec3::new(0.0, 2.0, 0.0), red));
+    world.add(Sphere::new_still(
+        2.0,
+        Vec3::new(0.0, 2.0, 0.0),
+        red.clone(),
+    ));
+
+    let diffuse_light = MaterialType::LIGHT(DiffuseLight::from_rgb(Vec3::new(14.0, 14.0, 14.0)));
     world.add(Quad::new(
         Vec3::new(3.0, 1.0, -2.0),
         Vec3::new(2.0, 0.0, 0.0),
@@ -211,12 +217,17 @@ fn basic_light_scene() {
         diffuse_light,
     ));
 
+    world.add_light(PointLight {
+        position: Vec3::new(4.0, 5.0, 0.0),
+        power: Vec3::new(0.3, 0.1, 3.0),
+    });
+
     world.build_bvh();
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 400;
-    camera.samples_per_pixel = 10;
+    camera.samples_per_pixel = 100;
     camera.max_depth = 50;
 
     camera.vfov = 20.0;
@@ -316,7 +327,7 @@ fn cornell_box_scene() {
 }
 
 fn main() {
-    let x = 2;
+    let x = 4;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),
