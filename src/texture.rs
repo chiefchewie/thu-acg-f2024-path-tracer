@@ -83,16 +83,16 @@ impl ImageTexture {
 }
 
 impl Texture for ImageTexture {
-    fn value(&self, mut u: f64, mut v: f64, _point: &Vec3) -> Vec3 {
+    fn value(&self, u: f64, v: f64, _point: &Vec3) -> Vec3 {
         if self.img.height() == 0 {
             return Vec3::new(0.0, 1.0, 1.0);
         }
 
-        u = u.clamp(0.0, 1.0);
-        v = 1.0 - v.clamp(0.0, 1.0);
+        let u = u.clamp(0.0, 1.0);
+        let v = 1.0 - v.clamp(0.0, 1.0);
 
-        let i = ((u * self.img.height() as f64) as u32).clamp(0, self.img.width() - 1);
-        let j = ((v * self.img.height() as f64) as u32).clamp(0, self.img.height() - 1);
+        let i = (u * self.img.width() as f64) as u32;
+        let j = (v * self.img.height() as f64) as u32;
         let pixel = self.img.get_pixel(i, j);
         let color_scale = 1.0 / 255.0;
 

@@ -26,6 +26,7 @@ pub struct Camera {
     pub blur_strength: f64,
     pub focal_length: f64,
     pub defocus_angle: f64,
+    pub ambient_light: Vec3,
 
     forward: Vec3,
     right: Vec3,
@@ -129,10 +130,8 @@ impl Camera {
         Vec2::new(radius * angle.cos(), radius * angle.sin())
     }
 
-    fn ambient_light(ray: &Ray) -> Vec3 {
-        // let a = 0.5 * (ray.direction().y + 1.0);
-        // Vec3::new(1.0, 1.0, 1.0) * (1.0 - a) + Vec3::new(0.5, 0.7, 1.0) * a
-        Vec3::ZERO
+    fn ambient_light(&self, ray: &Ray) -> Vec3 {
+        self.ambient_light
     }
 
     fn generate_ray(&self, r: usize, c: usize) -> Ray {
@@ -163,7 +162,7 @@ impl Camera {
         for bounces in 0..self.max_depth {
             match world.intersects(&ray, Interval::new(eps, f64::INFINITY)) {
                 None => {
-                    radiance += throughput * Self::ambient_light(&ray);
+                    radiance += throughput * self.ambient_light(&ray);
                     break;
                 }
                 // TODO instead of a switch, eval diff materials randomly based on properties?

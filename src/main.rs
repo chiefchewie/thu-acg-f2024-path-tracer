@@ -63,7 +63,7 @@ fn balls_scene() {
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
-    camera.image_width = 400;
+    camera.image_width = 720;
     camera.samples_per_pixel = 100;
     camera.max_depth = 10;
 
@@ -76,6 +76,8 @@ fn balls_scene() {
     camera.focal_length = 10.0;
     camera.defocus_angle = 0.6;
 
+    camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
+
     camera.init();
     camera.render(&world);
 }
@@ -87,7 +89,7 @@ fn earth_scene() {
     let mut world = World::new();
     world.add(Sphere::new_still(
         2.0,
-        Vec3::new(0.0, 0.0, 3.0),
+        Vec3::new(0.0, 0.0, 0.0),
         earth_surface,
     ));
 
@@ -99,14 +101,16 @@ fn earth_scene() {
     camera.samples_per_pixel = 10;
     camera.max_depth = 10;
 
-    camera.vfov = 90.0;
-    camera.look_from = Vec3::ZERO;
-    camera.look_at = Vec3::new(0.0, 0.0, 1.0);
+    camera.vfov = 20.0;
+    camera.look_from = Vec3::new(0.0, 0.0, 12.0);
+    camera.look_at = Vec3::ZERO;
     camera.vup = Vec3::new(0.0, 1.0, 0.0);
 
     camera.blur_strength = 0.5;
     camera.focal_length = 10.0;
     camera.defocus_angle = 0.0;
+
+    camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
 
     camera.init();
     camera.render(&world);
@@ -156,7 +160,7 @@ fn quads_scene() {
     let mut camera = Camera::new();
     camera.aspect_ratio = 1.0;
     camera.image_width = 400;
-    camera.samples_per_pixel = 100;
+    camera.samples_per_pixel = 10;
     camera.max_depth = 10;
 
     camera.vfov = 80.0;
@@ -167,6 +171,8 @@ fn quads_scene() {
     camera.blur_strength = 0.5;
     camera.focal_length = 10.0;
     camera.defocus_angle = 0.0;
+
+    camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
 
     camera.init();
     camera.render(&world);
@@ -195,7 +201,7 @@ fn basic_light_scene() {
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 400;
-    camera.samples_per_pixel = 200;
+    camera.samples_per_pixel = 10;
     camera.max_depth = 50;
 
     camera.vfov = 20.0;
@@ -207,6 +213,8 @@ fn basic_light_scene() {
     camera.focal_length = 10.0;
     camera.defocus_angle = 0.0;
 
+    camera.ambient_light = Vec3::ZERO;
+
     camera.init();
     camera.render(&world);
 }
@@ -215,10 +223,18 @@ fn cornell_box_scene() {
     let mut world = World::new();
 
     let mat1 = MaterialType::REFRACTIVE(Refractive::new(1.5));
-    world.add(Sphere::new_still(105.0, Vec3::new(413.0, 170.0, 372.0), mat1));
+    world.add(Sphere::new_still(
+        105.0,
+        Vec3::new(413.0, 170.0, 372.0),
+        mat1,
+    ));
 
     let mat2 = MaterialType::SPECULAR(Specular::new(0.7, 0.6, 0.5));
-    world.add(Sphere::new_still(135.0, Vec3::new(113.0, 170.0, 372.0), mat2));
+    world.add(Sphere::new_still(
+        135.0,
+        Vec3::new(113.0, 170.0, 372.0),
+        mat2,
+    ));
 
     let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
     let white = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.73, 0.73, 0.73)));
@@ -264,9 +280,9 @@ fn cornell_box_scene() {
     world.build_bvh();
 
     let mut camera = Camera::new();
-    camera.aspect_ratio = 4.0 / 3.0;
-    camera.image_width = 1024;
-    camera.samples_per_pixel = 400;
+    camera.aspect_ratio = 1.0;
+    camera.image_width = 900;
+    camera.samples_per_pixel = 1000;
     camera.max_depth = 20;
 
     camera.vfov = 40.0;
@@ -278,12 +294,14 @@ fn cornell_box_scene() {
     camera.focal_length = 10.0;
     camera.defocus_angle = 0.0;
 
+    camera.ambient_light = Vec3::ZERO;
+
     camera.init();
     camera.render(&world);
 }
 
 fn main() {
-    let x = 5;
+    let x = 2;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),
