@@ -69,7 +69,7 @@ fn balls_scene() {
 
     camera.vfov = 20.0;
     camera.look_from = Vec3::new(13.0, 2.0, 3.0);
-    camera.look_at = Vec3::new(0.0, 0.0, 0.0);
+    camera.look_at = Vec3::ZERO;
     camera.vup = Vec3::new(0.0, 1.0, 0.0);
 
     camera.blur_strength = 0.5;
@@ -83,32 +83,47 @@ fn balls_scene() {
 }
 
 fn earth_scene() {
+    let mut world = World::new();
+
     let earth_texture = ImageTexture::new("earthmap.jpg");
     let earth_surface = MaterialType::DIFFUSE(Diffuse::new(Rc::new(earth_texture)));
-
-    let mut world = World::new();
     world.add(Sphere::new_still(
-        2.0,
-        Vec3::new(0.0, 0.0, 0.0),
+        1.0,
+        Vec3::new(4.9, 1.0, 3.0),
         earth_surface,
+    ));
+
+    let mat2 = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.4, 0.2, 0.1)));
+    world.add(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat2));
+
+    let mat3 = MaterialType::SPECULAR(Specular::new(0.7, 0.6, 0.5));
+    world.add(Sphere::new_still(1.0, Vec3::new(4.0, 1.0, 0.0), mat3));
+
+    let checker_tex =
+        CheckerTexture::from_colors(0.62, Vec3::new(0.9, 0.0, 0.1), Vec3::new(0.9, 0.9, 0.9));
+    let mat_ground = MaterialType::DIFFUSE(Diffuse::new(Rc::new(checker_tex)));
+    world.add(Sphere::new_still(
+        1000.0,
+        Vec3::new(0.0, -1000.0, 0.0),
+        mat_ground,
     ));
 
     world.build_bvh();
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
-    camera.image_width = 400;
-    camera.samples_per_pixel = 10;
+    camera.image_width = 1024;
+    camera.samples_per_pixel = 1000;
     camera.max_depth = 10;
 
-    camera.vfov = 20.0;
-    camera.look_from = Vec3::new(0.0, 0.0, 12.0);
+    camera.vfov = 28.0;
+    camera.look_from = Vec3::new(8.8, 2.0, 3.0);
     camera.look_at = Vec3::ZERO;
     camera.vup = Vec3::new(0.0, 1.0, 0.0);
 
     camera.blur_strength = 0.5;
-    camera.focal_length = 10.0;
-    camera.defocus_angle = 0.0;
+    camera.focal_length = 2.869817807;
+    camera.defocus_angle = 2.5;
 
     camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
 
