@@ -19,7 +19,7 @@
 //     roughness: f64,
 //     alpha: f64,
 //     alpha_squared: f64,
-    
+
 //     fresnel_term: Vec3,
 
 //     v: Vec3,
@@ -32,7 +32,7 @@
 //     l_dot_h: f64,
 //     n_dot_h: f64,
 //     v_dot_h: f64,
-    
+
 //     v_backfacing: bool,
 //     l_backfacing: bool,
 // }

@@ -22,6 +22,7 @@ pub mod sphere;
 pub mod texture;
 pub mod utils;
 pub mod vec3;
+pub mod volume;
 
 pub trait Hittable {
     fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo>;

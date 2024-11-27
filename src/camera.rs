@@ -204,7 +204,9 @@ impl Camera {
 
             // attenuation = brdf / pdf in the lingo
             let emission = match hit_info.mat {
-                MaterialType::DIFFUSE(ref diffuse) => diffuse.emitted(hit_info.u, hit_info.v, hit_info.point),
+                MaterialType::DIFFUSE(ref diffuse) => {
+                    diffuse.emitted(hit_info.u, hit_info.v, hit_info.point)
+                }
                 MaterialType::SPECULAR(ref specular) => {
                     specular.emitted(hit_info.u, hit_info.v, hit_info.point)
                 }
