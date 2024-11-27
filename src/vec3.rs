@@ -2,6 +2,7 @@ use rand::Rng;
 
 pub type Vec3 = glam::DVec3;
 pub type Vec2 = glam::DVec2;
+pub type Quat = glam::f64::DQuat;
 
 pub fn random_vector_range(min: f64, max: f64) -> Vec3 {
     let mut rng = rand::thread_rng();
