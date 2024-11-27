@@ -22,3 +22,13 @@ pub fn step(edge: Vec3, x: Vec3) -> Vec3 {
     let f = |e: f64, v: f64| if v >= e { 1.0 } else { 0.0 };
     Vec3::new(f(edge.x, x.x), f(edge.y, x.y), f(edge.z, x.z))
 }
+
+const L: Vec3 = Vec3::new(0.2126, 0.7152, 0.0722);
+pub trait Luminance {
+    fn luminance(&self) -> f64;
+}
+impl Luminance for Vec3 {
+    fn luminance(&self) -> f64 {
+        self.dot(L)
+    }
+}

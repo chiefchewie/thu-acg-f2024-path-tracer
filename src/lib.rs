@@ -58,6 +58,7 @@ impl World {
     pub fn build_bvh(&mut self) {
         self.bvh = Some(BVH::build(self.objects.clone()));
     }
+
     fn shadow_ray(&self, origin: Vec3, light_pos: Vec3, time: f64) -> bool {
         let dir = (light_pos - origin).normalize();
         let max_dist = (light_pos - origin).length();

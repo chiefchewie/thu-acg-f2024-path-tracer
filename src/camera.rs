@@ -2,9 +2,9 @@ use core::{f64, panic};
 use std::{f64::consts::PI, fs::File, time::Instant};
 
 use crate::{
-    brdf::{self, eval_direct_lighting},
+    brdf::{self, eval_scatter, BRDFType},
     interval::Interval,
-    material::{Material, MaterialType},
+    material::MaterialType,
     ray::Ray,
     vec3::{Vec2, Vec3},
     Hittable, World,
@@ -154,8 +154,9 @@ impl Camera {
     }
 
     fn trace(&self, r: usize, c: usize, world: &World) -> Vec3 {
-        let min_bounces = 5; // TODO make min_bounces a parameter
+        let mut rng = thread_rng();
         let eps = 1e-3;
+        let min_bounces = 5; // TODO make min_bounces a parameter
 
         let mut ray = self.generate_ray(r, c);
 
@@ -224,20 +225,19 @@ impl Camera {
             // explictily sampling point lights for diffuse materials
             // TODO explicitly sample ALL lights, for ALL materials
             // if let MaterialType::DIFFUSE(_) = hit_info.mat {
-            if let MaterialType::BRDF(ref brdf_mat) = hit_info.mat {
-                for light in &world.lights {
-                    let result = world.shadow_ray(hit_info.point, light.position, ray.time());
-                    if result {
-                        let view_dir = -ray.direction();
-                        let light_dir = (light.position - hit_info.point).normalize();
-                        let len = (light.position - hit_info.point).length();
-                        radiance += throughput
-                            * eval_direct_lighting(hit_info.normal, light_dir, view_dir, &brdf_mat)
-                            / (len * len);
-                    }
-                }
-            }
-
+            // if let MaterialType::BRDF(ref brdf_mat) = hit_info.mat {
+            //     for light in &world.lights {
+            //         let result = world.shadow_ray(hit_info.point, light.position, ray.time());
+            //         if result {
+            //             let view_dir = -ray.direction();
+            //             let light_dir = (light.position - hit_info.point).normalize();
+            //             let len = (light.position - hit_info.point).length();
+            //             radiance += throughput
+            //                 * eval_direct_lighting(hit_info.normal, light_dir, view_dir, &brdf_mat)
+            //                 / (len * len);
+            //         }
+            //     }
+            // }
             if bounces > min_bounces {
                 // russian roulette
                 let p = throughput.max_element();
@@ -245,6 +245,37 @@ impl Camera {
                     break;
                 }
                 throughput /= p;
+            }
+
+            let view_dir = -ray.direction();
+            // attenuatino = brdfWeight = brdf/pdf
+            let (attenuation, scatter_dir) = match hit_info.mat {
+                MaterialType::BRDF(brdf_material) => {
+                    let brdf_type = if brdf_material.metalness() == 1.0
+                        && brdf_material.roughness() == 0.0
+                    {
+                        brdf::BRDFType::SPECULAR
+                    } else {
+                        let brdf_p = brdf_material.get_brdf_probability(view_dir, hit_info.normal);
+                        if rng.gen::<f64>() < brdf_p {
+                            throughput /= brdf_p;
+                            BRDFType::SPECULAR
+                        } else {
+                            throughput /= 1.0 - brdf_p;
+                            BRDFType::DIFFUSE
+                        }
+                    };
+                    eval_scatter(hit_info.normal, view_dir, &brdf_material, brdf_type)
+                }
+                MaterialType::LIGHT(_) => {
+                    (Vec3::ONE, None) // TODO
+                }
+            };
+            if let Some(dir) = scatter_dir {
+                throughput *= attenuation;
+                ray = Ray::new(hit_info.point + 1e-3 * hit_info.normal, dir, ray.time());
+            } else {
+                break;
             }
         }
         radiance

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use path_tracer::{
-    brdf::BRDFMaterialProps,
+    brdf::{BRDFData, BRDFMaterialProps},
     camera::Camera,
     light::PointLight,
     material::{Diffuse, DiffuseLight, MaterialType, Refractive, Specular},
@@ -338,57 +338,63 @@ use rand::{thread_rng, Rng};
 //     }
 // }
 
-
-fn basic_light_scene() {
+fn earth_scene() {
     let mut world = World::new();
 
-    let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
+    let earth_surface =
+        MaterialType::BRDF(BRDFMaterialProps::basic_diffuse(Vec3::new(0.0, 0.1, 0.4)));
+    world.add(Sphere::new_still(
+        1.0,
+        Vec3::new(4.9, 1.0, 3.0),
+        earth_surface,
+    ));
+
+    let mat2 = MaterialType::BRDF(BRDFMaterialProps::basic_diffuse(Vec3::new(0.0, 0.9, 0.1)));
+    world.add(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat2));
+
+    let mat3 = MaterialType::BRDF(BRDFMaterialProps::basic_metal(
+        Vec3::new(0.9, 0.2, 0.2),
+        0.7,
+    ));
+    world.add(Sphere::new_still(1.0, Vec3::new(4.0, 1.0, 0.0), mat3));
+
+    let mat_ground = MaterialType::BRDF(BRDFMaterialProps::new(
+        Vec3::new(0.4, 0.2, 0.1),
+        0.0,
+        Vec3::ZERO,
+        0.0,
+        0.0,
+        1.0,
+    ));
     world.add(Sphere::new_still(
         1000.0,
         Vec3::new(0.0, -1000.0, 0.0),
-        red.clone(),
+        mat_ground,
     ));
-
-    let thing = BRDFMaterialProps::new(Vec3::new(0.0, 1.0, 0.0), 0.0, Vec3::ZERO, 0.0, 0.0, 1.0);
-    let thing_mat = MaterialType::BRDF(thing);
-    world.add(Sphere::new_still(2.0, Vec3::new(0.0, 2.0, 0.0), thing_mat));
-
-    let diffuse_light = MaterialType::LIGHT(DiffuseLight::from_rgb(Vec3::new(14.0, 14.0, 14.0)));
-    world.add(Quad::new(
-        Vec3::new(3.0, 1.0, -2.0),
-        Vec3::new(2.0, 0.0, 0.0),
-        Vec3::new(0.0, 2.0, 0.0),
-        diffuse_light,
-    ));
-
-    world.add_light(PointLight {
-        position: Vec3::new(4.0, 5.0, 0.0),
-        power: Vec3::new(1.0, 1.0, 1.0),
-    });
 
     world.build_bvh();
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
-    camera.image_width = 400;
-    camera.samples_per_pixel = 100;
-    camera.max_depth = 50;
+    camera.image_width = 1024;
+    camera.samples_per_pixel = 10;
+    camera.max_depth = 10;
 
-    camera.vfov = 20.0;
-    camera.look_from = Vec3::new(26.0, 3.0, 6.0);
-    camera.look_at = Vec3::new(0.0, 2.0, 0.0);
+    camera.vfov = 28.0;
+    camera.look_from = Vec3::new(8.8, 2.0, 3.0);
+    camera.look_at = Vec3::ZERO;
     camera.vup = Vec3::new(0.0, 1.0, 0.0);
 
     camera.blur_strength = 0.5;
-    camera.focal_length = 10.0;
-    camera.defocus_angle = 0.0;
+    camera.focal_length = 2.869817807;
+    camera.defocus_angle = 2.5;
 
-    camera.ambient_light = Vec3::new(0.0, 0.0, 0.2);
+    camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
 
     camera.init();
     camera.render(&world);
 }
 
 fn main() {
-    basic_light_scene();
+    earth_scene();
 }
