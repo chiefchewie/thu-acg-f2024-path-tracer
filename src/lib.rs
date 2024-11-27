@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use aabb::AABB;
 use bvh::{BVHNode, BVH};
@@ -24,13 +24,13 @@ pub mod utils;
 pub mod vec3;
 pub mod volume;
 
-pub trait Hittable {
+pub trait Hittable: Send + Sync {
     fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo>;
     fn bounding_box(&self) -> AABB;
 }
 
 pub struct World {
-    objects: Vec<Rc<dyn Hittable>>,
+    objects: Vec<Arc<dyn Hittable>>,
     lights: Vec<PointLight>, // indices of light sources
     bbox: AABB,
     bvh: Option<BVHNode>,
@@ -52,7 +52,7 @@ impl World {
 
     pub fn add<T: Hittable + 'static>(&mut self, obj: T) {
         self.bbox = AABB::union(self.bbox, obj.bounding_box());
-        let rc = Rc::new(obj);
+        let rc = Arc::new(obj);
         self.objects.push(rc.clone());
     }
 

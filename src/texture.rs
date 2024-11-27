@@ -1,10 +1,10 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use image::{ImageBuffer, ImageReader, Pixel, Rgb};
 
 use crate::vec3::Vec3;
 
-pub trait Texture {
+pub trait Texture: Send + Sync {
     fn value(&self, u: f64, v: f64, point: &Vec3) -> Vec3;
 }
 
@@ -32,12 +32,12 @@ impl Texture for SolidColorTexture {
 
 pub struct CheckerTexture {
     inv_scale: f64,
-    tex1: Rc<dyn Texture>,
-    tex2: Rc<dyn Texture>,
+    tex1: Arc<dyn Texture>,
+    tex2: Arc<dyn Texture>,
 }
 
 impl CheckerTexture {
-    pub fn new(scale: f64, tex1: Rc<dyn Texture>, tex2: Rc<dyn Texture>) -> CheckerTexture {
+    pub fn new(scale: f64, tex1: Arc<dyn Texture>, tex2: Arc<dyn Texture>) -> CheckerTexture {
         CheckerTexture {
             inv_scale: scale.recip(),
             tex1,
@@ -48,8 +48,8 @@ impl CheckerTexture {
     pub fn from_colors(scale: f64, color1: Vec3, color2: Vec3) -> CheckerTexture {
         CheckerTexture {
             inv_scale: scale.recip(),
-            tex1: Rc::new(SolidColorTexture::from_vec(color1)),
-            tex2: Rc::new(SolidColorTexture::from_vec(color2)),
+            tex1: Arc::new(SolidColorTexture::from_vec(color1)),
+            tex2: Arc::new(SolidColorTexture::from_vec(color2)),
         }
     }
 }

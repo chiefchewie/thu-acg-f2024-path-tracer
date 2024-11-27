@@ -1,5 +1,5 @@
-use core::{f64, panic};
-use std::{f64::consts::PI, fs::File, time::Instant};
+use rayon::prelude::*;
+use std::{f64::consts::PI, time::Instant};
 
 use crate::{
     brdf::{self, eval_direct_lighting, eval_scatter, BRDFType},
@@ -9,7 +9,7 @@ use crate::{
     vec3::{Luminance, Vec2, Vec3},
     Hittable, World,
 };
-use image::{codecs::png::PngEncoder, ImageEncoder};
+use image::{ImageBuffer, Rgb};
 use rand::{thread_rng, Rng};
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -76,47 +76,34 @@ impl Camera {
         self.pixel00 = upperleft + (self.pixel_du + self.pixel_dv) * 0.5;
     }
 
-    pub fn render(&self, world: &World) {
+    pub fn render(&self, world: &World, filename: &str) {
         let start = Instant::now();
-        let mut pixels: Vec<u8> = vec![0; self.image_width * self.image_height * 3];
-        for r in 0..self.image_height {
-            for c in 0..self.image_width {
-                let mut color = Vec3::ZERO;
-                // TODO instead of multiple random rays per pixel, could try other Anti-Alias methods
-                for _ in 0..self.samples_per_pixel {
-                    color += self.trace(r, c, world);
-                    // let ray = self.generate_ray(r, c);
-                    // color = color + Self::trace1(&ray, self.max_depth, world);
-                }
-                color *= self.pixel_sample_scale;
+        let mut imgbuf: ImageBuffer<Rgb<u8>, Vec<u8>> =
+            ImageBuffer::new(self.image_width as u32, self.image_height as u32);
 
-                let rbyte = (Self::gamma_correct(color.x).clamp(0.0, 0.999) * 256.0) as u8;
-                let gbyte = (Self::gamma_correct(color.y).clamp(0.0, 0.999) * 256.0) as u8;
-                let bbyte = (Self::gamma_correct(color.z).clamp(0.0, 0.999) * 256.0) as u8;
-                let idx = r * self.image_width + c;
-                pixels[idx * 3] = rbyte;
-                pixels[idx * 3 + 1] = gbyte;
-                pixels[idx * 3 + 2] = bbyte;
+        imgbuf.par_enumerate_pixels_mut().for_each(|(x, y, pixel)| {
+            let (r, c) = (y as usize, x as usize);
+            let mut color = Vec3::ZERO;
+            // TODO instead of multiple random rays per pixel, could try other Anti-Alias methods
+            for _ in 0..self.samples_per_pixel {
+                color += self.trace(r, c, world);
+            }
+            color *= self.pixel_sample_scale;
+
+            let rbyte = (Self::gamma_correct(color.x).clamp(0.0, 0.999) * 256.0) as u8;
+            let gbyte = (Self::gamma_correct(color.y).clamp(0.0, 0.999) * 256.0) as u8;
+            let bbyte = (Self::gamma_correct(color.z).clamp(0.0, 0.999) * 256.0) as u8;
+            *pixel = image::Rgb([rbyte, gbyte, bbyte]);
+        });
+
+        match imgbuf.save(filename) {
+            Ok(_) => (),
+            Err(err) => {
+                eprintln!("Failed to save image {err}");
             }
         }
+
         dbg!(start.elapsed().as_secs_f64());
-
-        let file = File::create("image.png");
-        match file {
-            Ok(ting) => {
-                let encoder = PngEncoder::new(ting);
-                match encoder.write_image(
-                    &pixels,
-                    self.image_width as u32,
-                    self.image_height as u32,
-                    image::ExtendedColorType::Rgb8,
-                ) {
-                    Ok(_) => {}
-                    Err(_) => panic!("error tryna write file"),
-                }
-            }
-            Err(_) => panic!("error tryna create file"),
-        }
     }
 
     fn gamma_correct(x: f64) -> f64 {
@@ -278,27 +265,4 @@ impl Camera {
         }
         radiance
     }
-
-    // fn _trace(ray: &Ray, depth: usize, world: &World) -> Vec3 {
-    //     if depth == 0 {
-    //         return Vec3::ZERO;
-    //     }
-
-    //     let eps = 1e-3;
-    //     match world.intersects(ray, Interval::new(eps, f64::INFINITY)) {
-    //         Some(info) => {
-    //             let (attenuation, scatter) = match info.mat {
-    //                 MaterialType::DIFFUSE(ref material) => material.scatter(ray, &info),
-    //                 MaterialType::SPECULAR(material) => material.scatter(ray, &info),
-    //                 MaterialType::REFRACTIVE(material) => material.scatter(ray, &info),
-    //             };
-    //             if let Some(scatter_ray) = scatter {
-    //                 Self::_trace(&scatter_ray, depth - 1, world) * attenuation
-    //             } else {
-    //                 attenuation
-    //             }
-    //         }
-    //         None => Self::ambient_light(ray),
-    //     }
-    // }
 }

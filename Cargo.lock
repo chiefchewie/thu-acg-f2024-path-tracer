@@ -532,6 +532,7 @@ dependencies = [
  "glam",
  "image",
  "rand",
+ "rayon",
 ]
 
 [[package]]

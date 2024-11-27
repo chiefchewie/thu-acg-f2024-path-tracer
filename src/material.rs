@@ -1,4 +1,4 @@
-use std::{f64::consts::PI, rc::Rc};
+use std::{f64::consts::PI, sync::Arc};
 
 use rand::{thread_rng, Rng};
 
@@ -22,17 +22,17 @@ pub trait Material {
 
 #[derive(Clone)]
 pub struct Diffuse {
-    texture: Rc<dyn Texture>,
+    texture: Arc<dyn Texture>,
 }
 
 impl Diffuse {
-    pub fn new(texture: Rc<dyn Texture>) -> Diffuse {
+    pub fn new(texture: Arc<dyn Texture>) -> Diffuse {
         Diffuse { texture }
     }
 
     pub fn from_rgb(rgb: Vec3) -> Diffuse {
         Diffuse {
-            texture: Rc::new(SolidColorTexture::from_vec(rgb)),
+            texture: Arc::new(SolidColorTexture::from_vec(rgb)),
         }
     }
 }
@@ -149,17 +149,17 @@ impl Material for Refractive {
 
 #[derive(Clone)]
 pub struct DiffuseLight {
-    texture: Rc<dyn Texture>,
+    texture: Arc<dyn Texture>,
 }
 
 impl DiffuseLight {
-    pub fn new(texture: Rc<dyn Texture>) -> Self {
+    pub fn new(texture: Arc<dyn Texture>) -> Self {
         Self { texture }
     }
 
     pub fn from_rgb(rgb: Vec3) -> Self {
         Self {
-            texture: Rc::new(SolidColorTexture::from_vec(rgb)),
+            texture: Arc::new(SolidColorTexture::from_vec(rgb)),
         }
     }
 }

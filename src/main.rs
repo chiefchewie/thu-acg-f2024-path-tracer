@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use path_tracer::{
     brdf::{BRDFData, BRDFMaterialProps},
@@ -341,7 +341,7 @@ use rand::{thread_rng, Rng};
 fn earth_scene() {
     let mut world = World::new();
 
-    let earth_surface = MaterialType::BRDF(BRDFMaterialProps::texture_diffuse(Rc::new(
+    let earth_surface = MaterialType::BRDF(BRDFMaterialProps::texture_diffuse(Arc::new(
         ImageTexture::new("earthmap.jpg"),
     )));
     world.add(Sphere::new_still(
@@ -361,7 +361,7 @@ fn earth_scene() {
 
     let checker_tex =
         CheckerTexture::from_colors(0.62, Vec3::new(0.9, 0.0, 0.1), Vec3::new(0.9, 0.9, 0.9));
-    let mat_ground = MaterialType::BRDF(BRDFMaterialProps::texture_diffuse(Rc::new(checker_tex)));
+    let mat_ground = MaterialType::BRDF(BRDFMaterialProps::texture_diffuse(Arc::new(checker_tex)));
     world.add(Sphere::new_still(
         1000.0,
         Vec3::new(0.0, -1000.0, 0.0),
@@ -388,7 +388,7 @@ fn earth_scene() {
     camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
 
     camera.init();
-    camera.render(&world);
+    camera.render(&world, "earth.png");
 }
 
 fn main() {

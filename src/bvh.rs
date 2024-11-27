@@ -1,11 +1,11 @@
-use std::{cmp::Ordering, rc::Rc};
+use std::{cmp::Ordering, sync::Arc};
 
 use crate::{aabb::AABB, hit_info::HitInfo, interval::Interval, ray::Ray, Hittable};
 
 pub enum BVHNode {
     Leaf {
         bbox: AABB,
-        primitives: Vec<Rc<dyn Hittable>>,
+        primitives: Vec<Arc<dyn Hittable>>,
     },
     Internal {
         bbox: AABB,
@@ -17,12 +17,12 @@ pub enum BVHNode {
 pub struct BVH;
 
 impl BVH {
-    pub fn build(primitives: Vec<Rc<dyn Hittable>>) -> BVHNode {
+    pub fn build(primitives: Vec<Arc<dyn Hittable>>) -> BVHNode {
         Self::build_recursive(primitives)
     }
 
     // TODO surface area heuristic instead of splitting along longest axis
-    fn build_recursive(mut primitives: Vec<Rc<dyn Hittable>>) -> BVHNode {
+    fn build_recursive(mut primitives: Vec<Arc<dyn Hittable>>) -> BVHNode {
         if primitives.len() == 1 {
             let bbox = primitives[0].bounding_box();
             return BVHNode::Leaf { bbox, primitives };

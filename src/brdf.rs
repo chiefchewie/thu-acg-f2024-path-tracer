@@ -1,4 +1,4 @@
-use std::{f64::consts::PI, rc::Rc};
+use std::{f64::consts::PI, sync::Arc};
 
 use glam::FloatExt;
 use rand::{thread_rng, Rng};
@@ -85,9 +85,9 @@ fn sample_specular(
 /// returns: a sampled half-vector on the microfacet distribution
 fn sample_specular_half_vector(view_dir: Vec3, alpha2d: Vec2) -> Vec3 {
     let mut rng = thread_rng();
+
     // make the orthonormal base v_h, t1, t2
     let v_h = Vec3::new(alpha2d.x * view_dir.x, alpha2d.y * view_dir.y, view_dir.z).normalize();
-
     let lensq = v_h.x * v_h.x + v_h.y * v_h.y;
     let v1 = if lensq > 0.0 {
         Vec3::new(-v_h.y, v_h.x, 0.0) / lensq
@@ -181,11 +181,11 @@ pub struct BRDFMaterialProps {
     // TODO figure these out
     transmissiveness: f64,
     opacity: f64,
-    texture: Option<Rc<dyn Texture>>,
+    texture: Option<Arc<dyn Texture>>,
 }
 
 impl BRDFMaterialProps {
-    pub fn texture_diffuse(texture: Rc<dyn Texture>) -> Self {
+    pub fn texture_diffuse(texture: Arc<dyn Texture>) -> Self {
         Self {
             base_color: Vec3::ZERO,
             metalness: 0.0,
@@ -197,7 +197,7 @@ impl BRDFMaterialProps {
         }
     }
 
-    pub fn texture_metal(texture: Rc<dyn Texture>, metalness: f64) -> Self {
+    pub fn texture_metal(texture: Arc<dyn Texture>, metalness: f64) -> Self {
         Self {
             base_color: Vec3::ZERO,
             metalness,
@@ -242,7 +242,7 @@ impl BRDFMaterialProps {
 
         transmissiveness: f64,
         opacity: f64,
-        texture: Option<Rc<dyn Texture>>,
+        texture: Option<Arc<dyn Texture>>,
     ) -> Self {
         BRDFMaterialProps {
             base_color,
