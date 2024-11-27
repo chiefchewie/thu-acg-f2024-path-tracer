@@ -3,6 +3,7 @@ use std::{f64::consts::PI, rc::Rc};
 use rand::{thread_rng, Rng};
 
 use crate::{
+    brdf::BRDFMaterialProps,
     hit_info::HitInfo,
     ray::Ray,
     texture::{SolidColorTexture, Texture},
@@ -117,7 +118,7 @@ impl Material for Refractive {
     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
         let mut rng = rand::thread_rng();
         let eps = 1e-3;
-        let attenuation = Vec3::new(1.0, 1.0, 1.0);
+        let attenuation = Vec3::ONE;
         let ri = if hit_info.front_face {
             1.0 / self.refraction_index
         } else {
@@ -175,14 +176,16 @@ impl Material for DiffuseLight {
 
 #[derive(Clone)]
 pub enum MaterialType {
-    DIFFUSE(Diffuse),
-    SPECULAR(Specular),
-    REFRACTIVE(Refractive),
+    BRDF(BRDFMaterialProps),
+    // DIFFUSE(Diffuse),
+    // SPECULAR(Specular),
+    // REFRACTIVE(Refractive),
     LIGHT(DiffuseLight),
 }
 
 impl Default for MaterialType {
     fn default() -> Self {
-        Self::SPECULAR(Specular { albedo: Vec3::ZERO })
+        // Self::SPECULAR(Specular { albedo: Vec3::ZERO })
+        Self::LIGHT(DiffuseLight::from_rgb(Vec3::ZERO))
     }
 }
