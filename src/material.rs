@@ -3,7 +3,11 @@ use std::{f64::consts::PI, rc::Rc};
 use rand::{thread_rng, Rng};
 
 use crate::{
-    brdf::BRDFMaterialProps, hit_info::HitInfo, ray::Ray, texture::{SolidColorTexture, Texture}, vec3::Vec3
+    brdf::BRDFMaterialProps,
+    hit_info::HitInfo,
+    ray::Ray,
+    texture::{SolidColorTexture, Texture},
+    vec3::Vec3,
 };
 
 const EPS: f64 = 1e-3;
@@ -162,10 +166,10 @@ impl DiffuseLight {
 
 impl Material for DiffuseLight {
     fn emitted(&self, u: f64, v: f64, p: Vec3) -> Vec3 {
-        self.texture.value(u, v, &p) 
+        self.texture.value(u, v, &p)
     }
-    
-    fn scatter(&self, _ray: &Ray,_hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
+
+    fn scatter(&self, _ray: &Ray, _hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
         (Vec3::ZERO, None)
     }
 }
@@ -176,7 +180,7 @@ pub enum MaterialType {
     // DIFFUSE(Diffuse),
     // SPECULAR(Specular),
     // REFRACTIVE(Refractive),
-    LIGHT(DiffuseLight)
+    LIGHT(DiffuseLight),
 }
 
 impl Default for MaterialType {

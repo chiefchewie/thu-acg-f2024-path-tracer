@@ -1,199 +1,20 @@
-use std::f64::consts::PI;
+use std::{f64::consts::PI, rc::Rc};
 
 use glam::FloatExt;
 use rand::{thread_rng, Rng};
 
-use crate::vec3::{Quat, Vec2, Vec3};
+use crate::{
+    hit_info::HitInfo,
+    ray::Ray,
+    texture::Texture,
+    vec3::{Quat, Vec2, Vec3},
+};
 
 // implementation of https://boksajak.github.io/files/CrashCourseBRDF.pdf
 const MIN_DIELECTRICS_F0: f64 = 0.04;
+const EPS: f64 = 1e-4;
 
-#[derive(Clone)]
-pub struct BRDFMaterialProps {
-    base_color: Vec3,
-    metalness: f64, // a value in 0.0..=1.0
-
-    emission: Vec3,
-    roughness: f64, // a value in 0.0..=1.0
-
-    // TODO figure these out
-    transmissiveness: f64,
-    opacity: f64,
-    // texture: Option<Rc<dyn Texture>>,
-}
-
-impl BRDFMaterialProps {
-    pub fn basic_diffuse(base_color: Vec3) -> Self {
-        Self {
-            base_color,
-            metalness: 0.0,
-            emission: Vec3::ZERO,
-            roughness: 1.0, // lambertian diffuse brdf doesnt care about roughness
-            transmissiveness: 0.0,
-            opacity: 1.0,
-        }
-    }
-
-    pub fn basic_metal(base_color: Vec3, metalness: f64) -> Self {
-        Self {
-            base_color,
-            metalness,
-            emission: Vec3::ZERO,
-            roughness: 0.0,
-            transmissiveness: 0.0,
-            opacity: 1.0,
-        }
-    }
-
-    pub fn new(
-        base_color: Vec3,
-        metalness: f64,
-
-        emission: Vec3,
-        roughness: f64,
-
-        transmissiveness: f64,
-        opacity: f64,
-    ) -> Self {
-        BRDFMaterialProps {
-            base_color,
-            metalness,
-            emission,
-            roughness,
-            transmissiveness,
-            opacity,
-        }
-    }
-
-    /// return probabilty of selecting SPECULAR vs DIFFUSE based on Fresnel term
-    pub fn get_brdf_probability(&self, _view_dir: Vec3, _normal: Vec3) -> f64 {
-        // TODO for now just based it off of how "metallic" the material is
-        self.metalness
-    }
-
-    pub fn base_color(&self) -> Vec3 {
-        self.base_color
-    }
-
-    pub fn metalness(&self) -> f64 {
-        self.metalness
-    }
-
-    pub fn emission(&self) -> Vec3 {
-        self.emission
-    }
-
-    pub fn roughness(&self) -> f64 {
-        self.roughness
-    }
-}
-
-pub enum BRDFType {
-    DIFFUSE,
-    SPECULAR,
-}
-
-pub struct BRDFData {
-    specular_f0: Vec3,
-    diffuse_reflectance: Vec3,
-
-    roughness: f64,
-    alpha: f64,
-    alpha_squared: f64,
-
-    fresnel_term: Vec3,
-
-    v: Vec3,
-    n: Vec3,
-    l: Vec3,
-    h: Vec3,
-
-    n_dot_l: f64,
-    n_dot_v: f64,
-
-    l_dot_h: f64,
-    n_dot_h: f64,
-    v_dot_h: f64,
-
-    v_backfacing: bool,
-    l_backfacing: bool,
-}
-
-impl BRDFData {
-    pub fn new(normal: Vec3, light_dir: Vec3, view_dir: Vec3, mat: &BRDFMaterialProps) -> Self {
-        let v = view_dir.normalize();
-        let n = normal.normalize();
-        let l = light_dir.normalize();
-        let h = (l + v).normalize();
-
-        let n_dot_l = n.dot(l);
-        let n_dot_v = n.dot(v);
-
-        let v_backfacing = n_dot_v < 0.0;
-        let l_backfacing = n_dot_l < 0.0;
-
-        let n_dot_l = n_dot_l.clamp(1e-4, 1.0);
-        let n_dot_v = n_dot_v.clamp(1e-4, 1.0);
-
-        let l_dot_h = l.dot(h).clamp(0.0, 1.0);
-        let n_dot_h = n.dot(h).clamp(0.0, 1.0);
-        let v_dot_h = v.dot(h).clamp(0.0, 1.0);
-
-        let specular_f0 = base_color_to_specular_f0(mat.base_color, mat.metalness);
-        let diffuse_reflectance = base_color_to_diffuse_reflectance(mat.base_color, mat.metalness);
-
-        let roughness = mat.roughness;
-        let alpha = mat.roughness * mat.roughness;
-        let alpha_squared = alpha * alpha;
-
-        let fresnel_term = get_fresnel(specular_f0, l_dot_h);
-        Self {
-            specular_f0,
-            diffuse_reflectance,
-            roughness,
-            alpha,
-            alpha_squared,
-            fresnel_term,
-            v,
-            n,
-            l,
-            h,
-            n_dot_l,
-            n_dot_v,
-            l_dot_h,
-            n_dot_h,
-            v_dot_h,
-            v_backfacing,
-            l_backfacing,
-        }
-    }
-
-    /// Microfacet specular
-    pub fn eval_specular(&self) -> Vec3 {
-        let d = microfacet_d(self.alpha_squared.max(1e-4), self.n_dot_h);
-        let g2 = smith_g2_ggx(self.alpha_squared, self.n_dot_l, self.n_dot_v);
-        self.fresnel_term * (g2 * d * self.n_dot_v)
-    }
-
-    /// Lambertian BRDF
-    pub fn eval_diffuse(&self) -> Vec3 {
-        self.diffuse_reflectance * (PI.recip() * self.n_dot_l)
-    }
-
-    pub fn diffuse_term(&self) -> f64 {
-        1.0
-    }
-}
-
-fn base_color_to_specular_f0(base_color: Vec3, metalness: f64) -> Vec3 {
-    Vec3::new(MIN_DIELECTRICS_F0, MIN_DIELECTRICS_F0, MIN_DIELECTRICS_F0)
-        .lerp(base_color, metalness)
-}
-
-fn base_color_to_diffuse_reflectance(base_color: Vec3, metalness: f64) -> Vec3 {
-    base_color * (1.0 - metalness)
-}
-
+/// calculate the fresnel term
 fn get_fresnel(f0: Vec3, n_dot_s: f64) -> Vec3 {
     f0 + (1.0 - f0) * (1.0 - n_dot_s).powi(5)
 }
@@ -209,56 +30,6 @@ fn smith_g2_ggx(alpha_squared: f64, n_dot_l: f64, n_dot_v: f64) -> f64 {
     0.5 / (a + b)
 }
 
-pub fn eval_direct_lighting(
-    normal: Vec3,
-    light_dir: Vec3,
-    view_dir: Vec3,
-    mat: &BRDFMaterialProps,
-) -> Vec3 {
-    let data = BRDFData::new(normal, light_dir, view_dir, mat);
-    if data.v_backfacing || data.l_backfacing {
-        return Vec3::ZERO;
-    }
-
-    let specular = data.eval_specular();
-    let diffuse = data.eval_diffuse();
-
-    (Vec3::ONE - data.fresnel_term) * diffuse + specular
-}
-
-pub fn eval_scatter(
-    normal: Vec3,
-    view_dir: Vec3,
-    mat: &BRDFMaterialProps,
-    brdf_type: BRDFType,
-) -> (Vec3, Option<Vec3>) {
-    if normal.dot(view_dir) < 0.0 {
-        return (Vec3::ONE, None);
-    }
-
-    let rotation_to_z = get_rotation_to_z(normal);
-    let v_local = rotation_to_z * view_dir;
-    let n_local = Vec3::Z;
-
-    let (sample_weight, ray_dir_local) = match brdf_type {
-        BRDFType::DIFFUSE => {
-            let ray_dir_local = sample_hemisphere();
-            let data = BRDFData::new(n_local, ray_dir_local, v_local, &mat);
-            let sample_weight = data.diffuse_reflectance * data.diffuse_term();
-            (sample_weight, ray_dir_local)
-        }
-        BRDFType::SPECULAR => {
-            let data = BRDFData::new(n_local, Vec3::Z, v_local, &mat);
-            //rayDirectionLocal = sampleSpecular(Vlocal, data.alpha, data.alphaSquared, data.specularF0, u, sampleWeight);
-            sample_specular(v_local, data.alpha, data.alpha_squared, data.specular_f0)
-        }
-    };
-
-    let ray_dir = rotation_to_z.inverse() * ray_dir_local;
-
-    (sample_weight, Some(ray_dir))
-}
-
 /// returns the quaternion that rotates a vector so it is aligned to input as the +z axis
 fn get_rotation_to_z(input: Vec3) -> Quat {
     if input.z < -0.99999 {
@@ -268,6 +39,7 @@ fn get_rotation_to_z(input: Vec3) -> Quat {
     }
 }
 
+/* Diffuse BRDF functions */
 /// cosine-weighted distribution oriented along +z axis
 fn sample_hemisphere() -> Vec3 {
     let mut rng = thread_rng();
@@ -277,6 +49,7 @@ fn sample_hemisphere() -> Vec3 {
     Vec3::new(r2s * r1.cos(), r2s * r1.sin(), (1.0 - r2).sqrt())
 }
 
+/* Specular BRDF functions */
 /// return the (brdf_weight, scatter_dir) of a speclar surface
 fn sample_specular(
     v_local: Vec3,
@@ -284,7 +57,6 @@ fn sample_specular(
     alpha_squared: f64,
     specular_f0: Vec3,
 ) -> (Vec3, Vec3) {
-    let eps = 1e-4;
     let n_local = Vec3::Z;
 
     // H is a microfact normal
@@ -299,10 +71,9 @@ fn sample_specular(
     // reflect the view direction
     let l_local = (-v_local).reflect(h_local);
 
-    let h_dot_l = h_local.dot(l_local).clamp(eps, 1.0);
-    let n_dot_l = n_local.dot(l_local).clamp(eps, 1.0);
-    let n_dot_v = n_local.dot(v_local).clamp(eps, 1.0);
-    let n_dot_h = n_local.dot(h_local).clamp(eps, 1.0);
+    let h_dot_l = h_local.dot(l_local).clamp(EPS, 1.0);
+    let n_dot_l = n_local.dot(l_local).clamp(EPS, 1.0);
+    let n_dot_v = n_local.dot(v_local).clamp(EPS, 1.0);
     let fresnel = get_fresnel(specular_f0, h_dot_l);
 
     let weight = fresnel * sample_specular_weight(alpha_squared, n_dot_l, n_dot_v);
@@ -340,10 +111,281 @@ fn sample_specular_half_vector(view_dir: Vec3, alpha2d: Vec2) -> Vec3 {
 fn sample_specular_weight(alpha_squared: f64, n_dot_l: f64, n_dot_v: f64) -> f64 {
     let g1v = smith_g1(alpha_squared, n_dot_v * n_dot_v);
     let g1l = smith_g1(alpha_squared, n_dot_l * n_dot_l);
-    return g1l / (g1v + g1l - g1v * g1l);
+    g1l / (g1v + g1l - g1v * g1l)
 }
 
 fn smith_g1(alpha_squared: f64, n_dot_s_sqrd: f64) -> f64 {
-    return 2.0
-        / ((((alpha_squared * (1.0 - n_dot_s_sqrd)) + n_dot_s_sqrd) / n_dot_s_sqrd).sqrt() + 1.0);
+    2.0 / ((((alpha_squared * (1.0 - n_dot_s_sqrd)) + n_dot_s_sqrd) / n_dot_s_sqrd).sqrt() + 1.0)
+}
+
+/* scattering functions */
+/// evaluate the radiance from explicitly sampling a point light
+pub fn eval_direct_lighting(
+    ray: &Ray,
+    hit_info: &HitInfo,
+    light_dir: Vec3,
+    mat: &BRDFMaterialProps,
+) -> Vec3 {
+    let data = BRDFData::new(ray, hit_info, light_dir, mat);
+    if data.v_backfacing || data.l_backfacing {
+        return Vec3::ZERO;
+    }
+
+    let specular = data.eval_specular();
+    let diffuse = data.eval_diffuse();
+
+    (Vec3::ONE - data.fresnel_term) * diffuse + specular
+}
+
+/// evaluate the attenuation and scattered direction
+pub fn eval_scatter(
+    ray: &Ray,
+    hit_info: &HitInfo,
+    mat: &BRDFMaterialProps,
+    brdf_type: BRDFType,
+) -> (Vec3, Option<Vec3>) {
+    let view_dir = -ray.direction();
+    let normal = hit_info.normal;
+
+    if normal.dot(view_dir) < 0.0 {
+        return (Vec3::ONE, None);
+    }
+
+    let rotation_to_z = get_rotation_to_z(normal);
+    let v_local = rotation_to_z * view_dir;
+    let (sample_weight, ray_dir_local) = match brdf_type {
+        BRDFType::DIFFUSE => {
+            let ray_dir_local = sample_hemisphere();
+            let sample_weight = mat.diffuse_reflectance(hit_info);
+            (sample_weight, ray_dir_local)
+        }
+        BRDFType::SPECULAR => {
+            let alpha = mat.roughness * mat.roughness;
+            let alpha_squared = alpha * alpha;
+            sample_specular(v_local, alpha, alpha_squared, mat.specular_f0(hit_info))
+        }
+    };
+
+    let ray_dir = rotation_to_z.inverse() * ray_dir_local;
+    (sample_weight, Some(ray_dir))
+}
+
+#[derive(Clone)]
+pub struct BRDFMaterialProps {
+    base_color: Vec3,
+    metalness: f64, // a value in 0.0..=1.0
+
+    emission: Vec3,
+    roughness: f64, // a value in 0.0..=1.0
+
+    // TODO figure these out
+    transmissiveness: f64,
+    opacity: f64,
+    texture: Option<Rc<dyn Texture>>,
+}
+
+impl BRDFMaterialProps {
+    pub fn texture_diffuse(texture: Rc<dyn Texture>) -> Self {
+        Self {
+            base_color: Vec3::ZERO,
+            metalness: 0.0,
+            emission: Vec3::ZERO,
+            roughness: 1.0, // lambertian diffuse brdf doesnt care about roughness
+            transmissiveness: 0.0,
+            opacity: 1.0,
+            texture: Some(texture),
+        }
+    }
+
+    pub fn texture_metal(texture: Rc<dyn Texture>, metalness: f64) -> Self {
+        Self {
+            base_color: Vec3::ZERO,
+            metalness,
+            emission: Vec3::ZERO,
+            roughness: 0.0,
+            transmissiveness: 0.0,
+            opacity: 1.0,
+            texture: Some(texture),
+        }
+    }
+
+    pub fn basic_diffuse(base_color: Vec3) -> Self {
+        Self {
+            base_color,
+            metalness: 0.0,
+            emission: Vec3::ZERO,
+            roughness: 1.0, // lambertian diffuse brdf doesnt care about roughness
+            transmissiveness: 0.0,
+            opacity: 1.0,
+            texture: None,
+        }
+    }
+
+    pub fn basic_metal(base_color: Vec3, metalness: f64) -> Self {
+        Self {
+            base_color,
+            metalness,
+            emission: Vec3::ZERO,
+            roughness: 0.0,
+            transmissiveness: 0.0,
+            opacity: 1.0,
+            texture: None,
+        }
+    }
+
+    pub fn new(
+        base_color: Vec3,
+        metalness: f64,
+
+        emission: Vec3,
+        roughness: f64,
+
+        transmissiveness: f64,
+        opacity: f64,
+        texture: Option<Rc<dyn Texture>>,
+    ) -> Self {
+        BRDFMaterialProps {
+            base_color,
+            metalness,
+            emission,
+            roughness,
+            transmissiveness,
+            opacity,
+            texture,
+        }
+    }
+
+    /// return probabilty of selecting SPECULAR vs DIFFUSE based on Fresnel term
+    pub fn get_brdf_probability(&self, ray: &Ray, hit_info: &HitInfo) -> f64 {
+        // TODO for now just based it off of how "metallic" the material is
+        let _ = ray;
+        let _ = hit_info;
+        self.metalness
+    }
+
+    pub fn base_color(&self) -> Vec3 {
+        self.base_color
+    }
+
+    pub fn metalness(&self) -> f64 {
+        self.metalness
+    }
+
+    pub fn emission(&self) -> Vec3 {
+        self.emission
+    }
+
+    pub fn roughness(&self) -> f64 {
+        self.roughness
+    }
+
+    pub fn diffuse_reflectance(&self, hit_info: &HitInfo) -> Vec3 {
+        match self.texture {
+            Some(ref tex) => {
+                tex.value(hit_info.u, hit_info.v, &hit_info.point) * (1.0 - self.metalness)
+            }
+            None => self.base_color * (1.0 - self.metalness),
+        }
+    }
+
+    pub fn specular_f0(&self, hit_info: &HitInfo) -> Vec3 {
+        let color = match self.texture {
+            Some(ref tex) => tex.value(hit_info.u, hit_info.v, &hit_info.point),
+            None => self.base_color,
+        };
+
+        Vec3::new(MIN_DIELECTRICS_F0, MIN_DIELECTRICS_F0, MIN_DIELECTRICS_F0)
+            .lerp(color, self.metalness)
+    }
+}
+
+pub enum BRDFType {
+    DIFFUSE,
+    SPECULAR,
+}
+
+pub struct BRDFData {
+    // specular_f0: Vec3,
+    diffuse_reflectance: Vec3,
+
+    // roughness: f64,
+    // alpha: f64,
+    alpha_squared: f64,
+
+    fresnel_term: Vec3,
+
+    // v: Vec3,
+    // n: Vec3,
+    // l: Vec3,
+    // h: Vec3,
+    n_dot_l: f64,
+    n_dot_v: f64,
+
+    // l_dot_h: f64,
+    n_dot_h: f64,
+    // v_dot_h: f64,
+    v_backfacing: bool,
+    l_backfacing: bool,
+}
+
+impl BRDFData {
+    pub fn new(ray: &Ray, hit_info: &HitInfo, light_dir: Vec3, mat: &BRDFMaterialProps) -> Self {
+        let v = -ray.direction();
+        let n = hit_info.normal;
+        let l = light_dir;
+        let h = (l + v).normalize();
+
+        let n_dot_l = n.dot(l);
+        let n_dot_v = n.dot(v);
+
+        let v_backfacing = n_dot_v < 0.0;
+        let l_backfacing = n_dot_l < 0.0;
+
+        let n_dot_l = n_dot_l.clamp(EPS, 1.0);
+        let n_dot_v = n_dot_v.clamp(EPS, 1.0);
+
+        let l_dot_h = l.dot(h).clamp(0.0, 1.0);
+        let n_dot_h = n.dot(h).clamp(0.0, 1.0);
+        // let v_dot_h = v.dot(h).clamp(0.0, 1.0);
+
+        let specular_f0 = mat.specular_f0(hit_info);
+        let diffuse_reflectance = mat.diffuse_reflectance(hit_info);
+
+        // let roughness = mat.roughness;
+        let alpha = mat.roughness * mat.roughness;
+        let alpha_squared = alpha * alpha;
+
+        let fresnel_term = get_fresnel(specular_f0, l_dot_h);
+        Self {
+            // specular_f0,
+            diffuse_reflectance,
+            // roughness,
+            // alpha,
+            alpha_squared,
+            fresnel_term,
+            // v,
+            // n,
+            // l,
+            // h,
+            n_dot_l,
+            n_dot_v,
+            // l_dot_h,
+            n_dot_h,
+            // v_dot_h,
+            v_backfacing,
+            l_backfacing,
+        }
+    }
+
+    /// Microfacet specular
+    pub fn eval_specular(&self) -> Vec3 {
+        let d = microfacet_d(self.alpha_squared.max(EPS), self.n_dot_h);
+        let g2 = smith_g2_ggx(self.alpha_squared, self.n_dot_l, self.n_dot_v);
+        self.fresnel_term * (g2 * d * self.n_dot_v)
+    }
+
+    /// Lambertian BRDF
+    pub fn eval_diffuse(&self) -> Vec3 {
+        self.diffuse_reflectance * (PI.recip() * self.n_dot_l)
+    }
 }

@@ -2,11 +2,11 @@ use core::{f64, panic};
 use std::{f64::consts::PI, fs::File, time::Instant};
 
 use crate::{
-    brdf::{self, eval_scatter, BRDFType},
+    brdf::{self, eval_direct_lighting, eval_scatter, BRDFType},
     interval::Interval,
     material::MaterialType,
     ray::Ray,
-    vec3::{Vec2, Vec3},
+    vec3::{Luminance, Vec2, Vec3},
     Hittable, World,
 };
 use image::{codecs::png::PngEncoder, ImageEncoder};
@@ -223,49 +223,47 @@ impl Camera {
             // }
 
             // explictily sampling point lights for diffuse materials
-            // TODO explicitly sample ALL lights, for ALL materials
-            // if let MaterialType::DIFFUSE(_) = hit_info.mat {
-            // if let MaterialType::BRDF(ref brdf_mat) = hit_info.mat {
-            //     for light in &world.lights {
-            //         let result = world.shadow_ray(hit_info.point, light.position, ray.time());
-            //         if result {
-            //             let view_dir = -ray.direction();
-            //             let light_dir = (light.position - hit_info.point).normalize();
-            //             let len = (light.position - hit_info.point).length();
-            //             radiance += throughput
-            //                 * eval_direct_lighting(hit_info.normal, light_dir, view_dir, &brdf_mat)
-            //                 / (len * len);
-            //         }
-            //     }
-            // }
+            // TODO explicitly sample SOME (random) lights, for ALL materials
+            if let MaterialType::BRDF(ref brdf_mat) = hit_info.mat {
+                for light in &world.lights {
+                    let result = world.shadow_ray(hit_info.point, light.position, ray.time());
+                    if result {
+                        let light_dir = (light.position - hit_info.point).normalize();
+                        let len = (light.position - hit_info.point).length();
+                        radiance += throughput
+                            * eval_direct_lighting(&ray, &hit_info, light_dir, brdf_mat)
+                            / (len * len);
+                    }
+                }
+            }
+
             if bounces > min_bounces {
                 // russian roulette
-                let p = throughput.max_element();
+                // let p = throughput.max_element();
+                let p = throughput.luminance();
                 if thread_rng().gen::<f64>() > p {
                     break;
                 }
                 throughput /= p;
             }
 
-            let view_dir = -ray.direction();
             // attenuatino = brdfWeight = brdf/pdf
             let (attenuation, scatter_dir) = match hit_info.mat {
-                MaterialType::BRDF(brdf_material) => {
-                    let brdf_type = if brdf_material.metalness() == 1.0
-                        && brdf_material.roughness() == 0.0
-                    {
-                        brdf::BRDFType::SPECULAR
-                    } else {
-                        let brdf_p = brdf_material.get_brdf_probability(view_dir, hit_info.normal);
-                        if rng.gen::<f64>() < brdf_p {
-                            throughput /= brdf_p;
-                            BRDFType::SPECULAR
+                MaterialType::BRDF(ref brdf_material) => {
+                    let brdf_type =
+                        if brdf_material.metalness() == 1.0 && brdf_material.roughness() == 0.0 {
+                            brdf::BRDFType::SPECULAR
                         } else {
-                            throughput /= 1.0 - brdf_p;
-                            BRDFType::DIFFUSE
-                        }
-                    };
-                    eval_scatter(hit_info.normal, view_dir, &brdf_material, brdf_type)
+                            let brdf_p = brdf_material.get_brdf_probability(&ray, &hit_info);
+                            if rng.gen::<f64>() < brdf_p {
+                                throughput /= brdf_p;
+                                BRDFType::SPECULAR
+                            } else {
+                                throughput /= 1.0 - brdf_p;
+                                BRDFType::DIFFUSE
+                            }
+                        };
+                    eval_scatter(&ray, &hit_info, brdf_material, brdf_type)
                 }
                 MaterialType::LIGHT(_) => {
                     (Vec3::ONE, None) // TODO

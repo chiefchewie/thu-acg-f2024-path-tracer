@@ -341,8 +341,9 @@ use rand::{thread_rng, Rng};
 fn earth_scene() {
     let mut world = World::new();
 
-    let earth_surface =
-        MaterialType::BRDF(BRDFMaterialProps::basic_diffuse(Vec3::new(0.0, 0.1, 0.4)));
+    let earth_surface = MaterialType::BRDF(BRDFMaterialProps::texture_diffuse(Rc::new(
+        ImageTexture::new("earthmap.jpg"),
+    )));
     world.add(Sphere::new_still(
         1.0,
         Vec3::new(4.9, 1.0, 3.0),
@@ -353,19 +354,14 @@ fn earth_scene() {
     world.add(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat2));
 
     let mat3 = MaterialType::BRDF(BRDFMaterialProps::basic_metal(
-        Vec3::new(0.9, 0.2, 0.2),
-        0.7,
+        Vec3::new(0.7, 0.6, 0.5),
+        0.9,
     ));
     world.add(Sphere::new_still(1.0, Vec3::new(4.0, 1.0, 0.0), mat3));
 
-    let mat_ground = MaterialType::BRDF(BRDFMaterialProps::new(
-        Vec3::new(0.4, 0.2, 0.1),
-        0.0,
-        Vec3::ZERO,
-        0.0,
-        0.0,
-        1.0,
-    ));
+    let checker_tex =
+        CheckerTexture::from_colors(0.62, Vec3::new(0.9, 0.0, 0.1), Vec3::new(0.9, 0.9, 0.9));
+    let mat_ground = MaterialType::BRDF(BRDFMaterialProps::texture_diffuse(Rc::new(checker_tex)));
     world.add(Sphere::new_still(
         1000.0,
         Vec3::new(0.0, -1000.0, 0.0),
@@ -377,7 +373,7 @@ fn earth_scene() {
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 1024;
-    camera.samples_per_pixel = 10;
+    camera.samples_per_pixel = 100;
     camera.max_depth = 10;
 
     camera.vfov = 28.0;

@@ -62,10 +62,8 @@ impl World {
     fn shadow_ray(&self, origin: Vec3, light_pos: Vec3, time: f64) -> bool {
         let dir = (light_pos - origin).normalize();
         let max_dist = (light_pos - origin).length();
-        match self.intersects(&Ray::new(origin, dir, time), Interval::new(1e-3, max_dist)) {
-            Some(_) => false,
-            None => true,
-        }
+        self.intersects(&Ray::new(origin, dir, time), Interval::new(1e-3, max_dist))
+            .is_none()
     }
 }
 
