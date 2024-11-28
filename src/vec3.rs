@@ -18,6 +18,15 @@ pub fn random_vector() -> Vec3 {
     Vec3::new(rng.gen(), rng.gen(), rng.gen())
 }
 
+/// returns the quaternion that rotates a vector so it is aligned to input as the +z axis
+pub fn get_rotation_to_z(input: Vec3) -> Quat {
+    if input.z < -0.99999 {
+        Quat::from_xyzw(1.0, 0.0, 0.0, 0.0)
+    } else {
+        Quat::from_xyzw(input.y, -input.x, 0.0, 1.0 + input.z).normalize()
+    }
+}
+
 pub fn step(edge: Vec3, x: Vec3) -> Vec3 {
     let f = |e: f64, v: f64| if v >= e { 1.0 } else { 0.0 };
     Vec3::new(f(edge.x, x.x), f(edge.y, x.y), f(edge.z, x.z))

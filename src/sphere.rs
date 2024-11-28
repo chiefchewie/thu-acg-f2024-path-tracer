@@ -2,7 +2,8 @@ use core::f64;
 use std::f64::consts::PI;
 
 use crate::{
-    aabb::AABB, hit_info::HitInfo, interval::Interval, material::MaterialType, ray::Ray, vec3::Vec3, Hittable
+    aabb::AABB, hit_info::HitInfo, interval::Interval, material::MaterialType, ray::Ray,
+    vec3::Vec3, Hittable,
 };
 
 #[derive(Clone)]
