@@ -1,10 +1,10 @@
 use std::{rc::Rc, sync::Arc};
 
 use path_tracer::{
-    brdf::{BRDFData, BRDFMaterialProps},
+    brdf::{BRDFData, BRDFMaterialProps, BRDFType},
     camera::Camera,
     light::PointLight,
-    material::{Diffuse, DiffuseLight, MaterialType, Refractive, Specular},
+    material::{Diffuse, DiffuseLight, Material, MaterialType, Refractive, Specular},
     quad::Quad,
     sphere::Sphere,
     texture::{CheckerTexture, ImageTexture},
@@ -359,6 +359,7 @@ fn earth_scene() {
     let mat3 = MaterialType::BRDF(BRDFMaterialProps::basic_glossy(
         Vec3::new(0.7, 0.6, 0.5),
         0.9,
+        0.2,
     ));
     world.add(Sphere::new_still(1.0, Vec3::new(4.0, 1.0, 0.0), mat3));
 
@@ -394,11 +395,66 @@ fn earth_scene() {
     camera.render(&world, "earth.png");
 }
 
+fn refract_test() {
+    let mut world = World::new();
+    let material_ground =
+        MaterialType::BRDF(BRDFMaterialProps::basic_diffuse(Vec3::new(0.8, 0.8, 0.0)));
+    let material_center =
+        MaterialType::BRDF(BRDFMaterialProps::basic_diffuse(Vec3::new(0.1, 0.2, 0.5)));
+    let material_left =
+        MaterialType::BRDF(BRDFMaterialProps::basic_diffuse(Vec3::new(0.8, 0.8, 0.8)));
+    let material_right =
+        MaterialType::BRDF(BRDFMaterialProps::basic_diffuse(Vec3::new(0.8, 0.6, 0.2)));
+
+    world.add(Sphere::new_still(
+        100.0,
+        Vec3::new(0.0, -100.5, -1.0),
+        material_ground,
+    ));
+    world.add(Sphere::new_still(
+        0.5,
+        Vec3::new(0.0, 0.0, -1.2),
+        material_center,
+    ));
+    world.add(Sphere::new_still(
+        0.5,
+        Vec3::new(-1.0, 0.0, -1.0),
+        material_left,
+    ));
+    world.add(Sphere::new_still(
+        0.5,
+        Vec3::new(1.0, 0.0, -1.0),
+        material_right,
+    ));
+    world.build_bvh();
+
+    let mut camera = Camera::new();
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 400;
+    camera.samples_per_pixel = 100;
+    camera.max_depth = 10;
+
+    camera.vfov = 90.0;
+    camera.look_from = Vec3::ZERO;
+    camera.look_at = -Vec3::Z;
+    camera.vup = Vec3::new(0.0, 1.0, 0.0);
+
+    camera.blur_strength = 0.5;
+    camera.focal_length = 2.869817807;
+    camera.defocus_angle = 0.0;
+
+    camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
+
+    camera.init();
+    camera.render(&world, "earth.png")
+}
+
 fn main() {
     let x = 1;
     match x {
         1 => earth_scene(),
         2 => basic_light_scene(),
+        3 => refract_test(),
         _ => (),
     }
 }

@@ -81,20 +81,39 @@ impl Camera {
         let mut imgbuf: ImageBuffer<Rgb<u8>, Vec<u8>> =
             ImageBuffer::new(self.image_width as u32, self.image_height as u32);
 
-        imgbuf.par_enumerate_pixels_mut().for_each(|(x, y, pixel)| {
-            let (r, c) = (y as usize, x as usize);
-            let mut color = Vec3::ZERO;
-            // TODO instead of multiple random rays per pixel, could try other Anti-Alias methods
-            for _ in 0..self.samples_per_pixel {
-                color += self.trace(r, c, world);
-            }
-            color *= self.pixel_sample_scale;
-
-            let rbyte = (Self::gamma_correct(color.x).clamp(0.0, 0.999) * 256.0) as u8;
-            let gbyte = (Self::gamma_correct(color.y).clamp(0.0, 0.999) * 256.0) as u8;
-            let bbyte = (Self::gamma_correct(color.z).clamp(0.0, 0.999) * 256.0) as u8;
-            *pixel = image::Rgb([rbyte, gbyte, bbyte]);
-        });
+        if cfg!(debug_assertions) {
+            println!("rendering debug");
+            imgbuf.enumerate_pixels_mut().for_each(|(x, y, pixel)| {
+                let (r, c) = (y as usize, x as usize);
+                let mut color = Vec3::ZERO;
+                // TODO instead of multiple random rays per pixel, could try other Anti-Alias methods
+                for _ in 0..self.samples_per_pixel {
+                    color += self.trace(r, c, world);
+                }
+                color *= self.pixel_sample_scale;
+    
+                let rbyte = (Self::gamma_correct(color.x).clamp(0.0, 0.999) * 256.0) as u8;
+                let gbyte = (Self::gamma_correct(color.y).clamp(0.0, 0.999) * 256.0) as u8;
+                let bbyte = (Self::gamma_correct(color.z).clamp(0.0, 0.999) * 256.0) as u8;
+                *pixel = image::Rgb([rbyte, gbyte, bbyte]);
+            });
+        } else {
+            println!("rendering production");
+            imgbuf.par_enumerate_pixels_mut().for_each(|(x, y, pixel)| {
+                let (r, c) = (y as usize, x as usize);
+                let mut color = Vec3::ZERO;
+                // TODO instead of multiple random rays per pixel, could try other Anti-Alias methods
+                for _ in 0..self.samples_per_pixel {
+                    color += self.trace(r, c, world);
+                }
+                color *= self.pixel_sample_scale;
+    
+                let rbyte = (Self::gamma_correct(color.x).clamp(0.0, 0.999) * 256.0) as u8;
+                let gbyte = (Self::gamma_correct(color.y).clamp(0.0, 0.999) * 256.0) as u8;
+                let bbyte = (Self::gamma_correct(color.z).clamp(0.0, 0.999) * 256.0) as u8;
+                *pixel = image::Rgb([rbyte, gbyte, bbyte]);
+            });
+        }
 
         match imgbuf.save(filename) {
             Ok(_) => (),

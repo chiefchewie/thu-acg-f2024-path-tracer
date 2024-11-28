@@ -16,8 +16,8 @@ const MIN_DIELECTRICS_F0: f64 = 0.04;
 const EPS: f64 = 1e-4;
 
 /// calculate the fresnel term
-fn get_fresnel(f0: Vec3, n_dot_s: f64) -> Vec3 {
-    f0 + (1.0 - f0) * (1.0 - n_dot_s).powi(5)
+fn get_fresnel(f0: Vec3, cosine: f64) -> Vec3 {
+    f0 + (1.0 - f0) * (1.0 - cosine).powi(5)
 }
 
 fn microfacet_d(alpha_squared: f64, n_dot_h: f64) -> f64 {
@@ -66,7 +66,7 @@ fn sample_specular(
         n_local
     } else {
         // sample from the half-vector distribution
-        sample_specular_half_vector(v_local, Vec2::new(alpha, alpha))
+        sample_microfacet_normal(v_local, Vec2::new(alpha, alpha))
     };
 
     // reflect the view direction
@@ -83,8 +83,8 @@ fn sample_specular(
 
 /// view_dir: the view direction
 /// alpha2d: the roughness params for x- and y- axis
-/// returns: a sampled microfacet normal on the microfacet distribution
-fn sample_specular_half_vector(view_dir: Vec3, alpha2d: Vec2) -> Vec3 {
+/// returns: a sampled microfacet half normal on the microfacet distribution (GGX)
+fn sample_microfacet_normal(view_dir: Vec3, alpha2d: Vec2) -> Vec3 {
     let mut rng = thread_rng();
 
     // make the orthonormal base v_h, t1, t2
@@ -198,12 +198,12 @@ impl BRDFMaterialProps {
         }
     }
 
-    pub fn basic_glossy(base_color: Vec3, metalness: f64) -> Self {
+    pub fn basic_glossy(base_color: Vec3, metalness: f64, roughness: f64) -> Self {
         Self {
             base_color,
             metalness,
             emission: Vec3::ZERO,
-            roughness: 0.4,
+            roughness,
             transmissiveness: 0.0,
             opacity: 1.0,
             texture: None,
@@ -283,7 +283,7 @@ impl Material for BRDFMaterialProps {
         // decide which type of reflection to use
         let mut rng = thread_rng();
         let (scatter_type, scatter_type_p) = if self.metalness() == 1.0 && self.roughness() == 0.0 {
-            (BRDFType::SPECULAR, 1.0)
+                (BRDFType::SPECULAR, 1.0)
         } else {
             let brdf_p = self.get_brdf_probability(&ray, &hit_info);
             if rng.gen::<f64>() < brdf_p {
@@ -317,13 +317,20 @@ impl Material for BRDFMaterialProps {
         };
 
         let scatter_dir = rotation_to_z.inverse() * ray_dir_local;
+        let sign_eps = scatter_dir.dot(normal).signum() * eps;
         let scatter_ray = Ray::new(
-            hit_info.point + eps * hit_info.normal,
+            hit_info.point + sign_eps * hit_info.normal,
             scatter_dir,
             ray.time(),
         );
         (sample_weight * scatter_type_p, Some(scatter_ray))
     }
+}
+
+fn _reflectance(cosine: f64, refraction_index: f64) -> f64 {
+    let mut r0 = (1.0 - refraction_index) / (1.0 + refraction_index);
+    r0 *= r0;
+    r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
 }
 
 pub enum BRDFType {
