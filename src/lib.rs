@@ -9,7 +9,6 @@ use ray::Ray;
 use vec3::Vec3;
 
 pub mod aabb;
-pub mod brdf;
 pub mod bvh;
 pub mod camera;
 pub mod hit_info;

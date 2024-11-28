@@ -2,7 +2,6 @@ use rayon::prelude::*;
 use std::{f64::consts::PI, time::Instant};
 
 use crate::{
-    brdf::eval_direct_lighting,
     interval::Interval,
     material::{Material, MaterialType},
     ray::Ray,
@@ -91,7 +90,7 @@ impl Camera {
                     color += self.trace(r, c, world);
                 }
                 color *= self.pixel_sample_scale;
-    
+
                 let rbyte = (Self::gamma_correct(color.x).clamp(0.0, 0.999) * 256.0) as u8;
                 let gbyte = (Self::gamma_correct(color.y).clamp(0.0, 0.999) * 256.0) as u8;
                 let bbyte = (Self::gamma_correct(color.z).clamp(0.0, 0.999) * 256.0) as u8;
@@ -107,7 +106,7 @@ impl Camera {
                     color += self.trace(r, c, world);
                 }
                 color *= self.pixel_sample_scale;
-    
+
                 let rbyte = (Self::gamma_correct(color.x).clamp(0.0, 0.999) * 256.0) as u8;
                 let gbyte = (Self::gamma_correct(color.y).clamp(0.0, 0.999) * 256.0) as u8;
                 let bbyte = (Self::gamma_correct(color.z).clamp(0.0, 0.999) * 256.0) as u8;
@@ -173,21 +172,36 @@ impl Camera {
                 break;
             };
 
-            if let MaterialType::BRDF(ref brdf_mat) = hit_info.mat {
-                radiance += throughput * brdf_mat.emission();
-
-                // explictily sampling point lights for diffuse materials
-                // TODO explicitly sample SOME (random) lights, for ALL materials
+            // explictily sampling point lights for diffuse materials
+            // TODO explicitly sample ALL lights, for ALL materials
+            if let MaterialType::DIFFUSE(_) = hit_info.mat {
                 for light in &world.lights {
                     let result = world.shadow_ray(hit_info.point, light.position, ray.time());
                     if result {
                         let light_dir = (light.position - hit_info.point).normalize();
                         let len = (light.position - hit_info.point).length();
-                        let c = eval_direct_lighting(&ray, &hit_info, light_dir, brdf_mat);
-                        radiance += throughput * c / (len * len);
+                        let color =
+                            (light.power / (len * len)) * hit_info.normal.dot(light_dir).max(0.0);
+                        radiance += throughput * color;
                     }
                 }
             }
+
+            let emission = match hit_info.mat {
+                MaterialType::DIFFUSE(ref diffuse) => {
+                    diffuse.emitted(hit_info.u, hit_info.v, hit_info.point)
+                }
+                MaterialType::SPECULAR(ref specular) => {
+                    specular.emitted(hit_info.u, hit_info.v, hit_info.point)
+                }
+                MaterialType::REFRACTIVE(ref refractive) => {
+                    refractive.emitted(hit_info.u, hit_info.v, hit_info.point)
+                }
+                MaterialType::LIGHT(ref diffuse_light) => {
+                    diffuse_light.emitted(hit_info.u, hit_info.v, hit_info.point)
+                }
+            };
+            radiance += emission * throughput;
 
             if bounces > min_bounces {
                 // russian roulette
@@ -199,14 +213,12 @@ impl Camera {
                 throughput /= p;
             }
 
-            // attenuatino = brdfWeight = brdf/pdf
+            // attenuation = brdf / pdf in the lingo
             let (attenuation, next_ray) = match hit_info.mat {
-                MaterialType::BRDF(ref brdf_material) => {
-                    brdf_material.scatter(&ray, &hit_info)
-                }
-                MaterialType::LIGHT(_) => {
-                    (Vec3::ONE, None) // TODO
-                }
+                MaterialType::DIFFUSE(ref diffuse) => diffuse.scatter(&ray, &hit_info),
+                MaterialType::SPECULAR(ref specular) => specular.scatter(&ray, &hit_info),
+                MaterialType::REFRACTIVE(ref refractive) => refractive.scatter(&ray, &hit_info),
+                MaterialType::LIGHT(ref diffuse_light) => diffuse_light.scatter(&ray, &hit_info),
             };
             if let Some(scatter_ray) = next_ray {
                 throughput *= attenuation;

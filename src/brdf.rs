@@ -8,7 +8,7 @@ use crate::{
     material::Material,
     ray::Ray,
     texture::Texture,
-    vec3::{Quat, Vec2, Vec3},
+    vec3::{Luminance, Quat, Vec2, Vec3},
 };
 
 // implementation of https://boksajak.github.io/files/CrashCourseBRDF.pdf
@@ -167,7 +167,7 @@ impl BRDFMaterialProps {
             base_color: Vec3::ZERO,
             metalness: 0.0,
             emission: Vec3::ZERO,
-            roughness: 1.0, // lambertian diffuse brdf doesnt care about roughness
+            roughness: 1.0,
             transmissiveness: 0.0,
             opacity: 1.0,
             texture: Some(texture),
@@ -191,7 +191,7 @@ impl BRDFMaterialProps {
             base_color,
             metalness: 0.0,
             emission: Vec3::ZERO,
-            roughness: 1.0, // lambertian diffuse brdf doesnt care about roughness
+            roughness: 1.0,
             transmissiveness: 0.0,
             opacity: 1.0,
             texture: None,
@@ -235,9 +235,21 @@ impl BRDFMaterialProps {
     /// return probabilty of selecting SPECULAR vs DIFFUSE based on Fresnel term, given we are reflecting
     pub fn get_brdf_probability(&self, ray: &Ray, hit_info: &HitInfo) -> f64 {
         // TODO for now just based it off of how "metallic" the material is
-        let _ = ray;
-        let _ = hit_info;
-        self.metalness
+        let view_dir = -ray.direction();
+        let fresnel = get_fresnel(
+            self.specular_f0(hit_info),
+            view_dir.dot(hit_info.normal).max(0.0),
+        )
+        .luminance()
+        .clamp(0.0, 1.0);
+
+        let specular = fresnel * (1.0 - self.roughness);
+        let diffuse = self.diffuse_reflectance(hit_info).luminance() * (1.0 - fresnel) * self.roughness;
+
+        let p = specular / (specular + diffuse).max(1e-3);
+        p.clamp(0.1, 0.9)
+        // dbg!(p.clamp(0.1, 0.9)-self.metalness);
+        // self.metalness
     }
 
     pub fn base_color(&self) -> Vec3 {
@@ -283,7 +295,7 @@ impl Material for BRDFMaterialProps {
         // decide which type of reflection to use
         let mut rng = thread_rng();
         let (scatter_type, scatter_type_p) = if self.metalness() == 1.0 && self.roughness() == 0.0 {
-                (BRDFType::SPECULAR, 1.0)
+            (BRDFType::SPECULAR, 1.0)
         } else {
             let brdf_p = self.get_brdf_probability(&ray, &hit_info);
             if rng.gen::<f64>() < brdf_p {
@@ -303,14 +315,21 @@ impl Material for BRDFMaterialProps {
 
         let rotation_to_z = get_rotation_to_z(normal);
         let v_local = rotation_to_z * view_dir;
+        let alpha = self.roughness * self.roughness;
         let (sample_weight, ray_dir_local) = match scatter_type {
             BRDFType::DIFFUSE => {
                 let ray_dir_local = sample_hemisphere();
-                let sample_weight = self.diffuse_reflectance(hit_info);
+                let sample_weight = self.diffuse_reflectance(hit_info) ;
+
+                // specular component
+                let h_local = sample_microfacet_normal(v_local, Vec2::new(alpha, alpha));
+                let cos_theta = v_local.dot(h_local).clamp(1e-4, 1.0);
+                let sample_weight = sample_weight * (Vec3::ONE - get_fresnel(self.specular_f0(hit_info), cos_theta));
+                //
+
                 (sample_weight, ray_dir_local)
             }
             BRDFType::SPECULAR => {
-                let alpha = self.roughness * self.roughness;
                 let alpha_squared = alpha * alpha;
                 sample_specular(v_local, alpha, alpha_squared, self.specular_f0(hit_info))
             }

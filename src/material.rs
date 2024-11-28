@@ -3,7 +3,6 @@ use std::{f64::consts::PI, sync::Arc};
 use rand::{thread_rng, Rng};
 
 use crate::{
-    brdf::BRDFMaterialProps,
     hit_info::HitInfo,
     ray::Ray,
     texture::{SolidColorTexture, Texture},
@@ -66,20 +65,22 @@ impl Material for Diffuse {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Clone)]
 pub struct Specular {
-    albedo: Vec3,
+    texture: Arc<dyn Texture>,
+    roughness: f64,
 }
 
 impl Specular {
-    pub fn new(r: f64, g: f64, b: f64) -> Specular {
-        Specular {
-            albedo: Vec3::new(r, g, b),
-        }
+    pub fn new(texture: Arc<dyn Texture>, roughness: f64) -> Specular {
+        Specular { texture, roughness }
     }
 
-    pub fn from_rgb(rgb: Vec3) -> Specular {
-        Specular { albedo: rgb }
+    pub fn from_rgb(rgb: Vec3, roughness: f64) -> Specular {
+        Specular {
+            texture: Arc::new(SolidColorTexture::from_vec(rgb)),
+            roughness,
+        }
     }
 }
 
@@ -87,7 +88,7 @@ impl Material for Specular {
     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
         let refl_dir = ray.direction().reflect(hit_info.normal);
         (
-            self.albedo,
+            self.texture.value(hit_info.u, hit_info.v, &hit_info.point),
             Some(Ray::new(
                 hit_info.point + hit_info.normal * EPS,
                 refl_dir,
@@ -176,10 +177,9 @@ impl Material for DiffuseLight {
 
 #[derive(Clone)]
 pub enum MaterialType {
-    BRDF(BRDFMaterialProps),
-    // DIFFUSE(Diffuse),
-    // SPECULAR(Specular),
-    // REFRACTIVE(Refractive),
+    DIFFUSE(Diffuse),
+    SPECULAR(Specular),
+    REFRACTIVE(Refractive),
     LIGHT(DiffuseLight),
 }
 
