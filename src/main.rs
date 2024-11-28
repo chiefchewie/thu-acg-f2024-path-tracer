@@ -195,55 +195,58 @@ use rand::{thread_rng, Rng};
 //     camera.render(&world);
 // }
 
-// fn basic_light_scene() {
-//     let mut world = World::new();
+fn basic_light_scene() {
+    let mut world = World::new();
 
-//     let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
-//     world.add(Sphere::new_still(
-//         1000.0,
-//         Vec3::new(0.0, -1000.0, 0.0),
-//         red.clone(),
-//     ));
+    let red = MaterialType::BRDF(BRDFMaterialProps::basic_diffuse(Vec3::new(
+        0.65, 0.05, 0.05,
+    )));
+    world.add(Sphere::new_still(
+        1000.0,
+        Vec3::new(0.0, -1000.0, 0.0),
+        red.clone(),
+    ));
+    world.add(Sphere::new_still(
+        2.0,
+        Vec3::new(0.0, 2.0, 0.0),
+        red.clone(),
+    ));
 
-//     let thing = BRDFMaterialProps::new(Vec3::new(0.0, 1.0, 0.0), 0.0, Vec3::ZERO, 0.0, 0.0, 1.0);
-//     let thing_mat = MaterialType::BRDF(thing);
-//     world.add(Sphere::new_still(2.0, Vec3::new(0.0, 2.0, 0.0), thing_mat));
+    let diffuse_light = MaterialType::BRDF(BRDFMaterialProps::light(Vec3::new(14.0, 14.0, 14.0)));
+    world.add(Quad::new(
+        Vec3::new(3.0, 1.0, -2.0),
+        Vec3::new(2.0, 0.0, 0.0),
+        Vec3::new(0.0, 2.0, 0.0),
+        diffuse_light,
+    ));
 
-//     let diffuse_light = MaterialType::LIGHT(DiffuseLight::from_rgb(Vec3::new(14.0, 14.0, 14.0)));
-//     world.add(Quad::new(
-//         Vec3::new(3.0, 1.0, -2.0),
-//         Vec3::new(2.0, 0.0, 0.0),
-//         Vec3::new(0.0, 2.0, 0.0),
-//         diffuse_light,
-//     ));
+    world.add_light(PointLight {
+        position: Vec3::new(4.0, 5.0, 0.0),
+        power: Vec3::new(1.0, 9.0, 1.0),
+    });
 
-//     world.add_light(PointLight {
-//         position: Vec3::new(4.0, 5.0, 0.0),
-//         power: Vec3::new(1.0, 1.0, 1.0),
-//     });
+    world.build_bvh();
 
-//     world.build_bvh();
+    let mut camera = Camera::new();
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 400;
+    camera.samples_per_pixel = 100;
+    camera.max_depth = 50;
 
-//     let mut camera = Camera::new();
-//     camera.aspect_ratio = 16.0 / 9.0;
-//     camera.image_width = 400;
-//     camera.samples_per_pixel = 100;
-//     camera.max_depth = 50;
+    camera.vfov = 20.0;
+    camera.look_from = Vec3::new(26.0, 3.0, 6.0);
+    camera.look_at = Vec3::new(0.0, 2.0, 0.0);
+    camera.vup = Vec3::new(0.0, 1.0, 0.0);
 
-//     camera.vfov = 20.0;
-//     camera.look_from = Vec3::new(26.0, 3.0, 6.0);
-//     camera.look_at = Vec3::new(0.0, 2.0, 0.0);
-//     camera.vup = Vec3::new(0.0, 1.0, 0.0);
+    camera.blur_strength = 0.5;
+    camera.focal_length = 10.0;
+    camera.defocus_angle = 0.0;
 
-//     camera.blur_strength = 0.5;
-//     camera.focal_length = 10.0;
-//     camera.defocus_angle = 0.0;
+    camera.ambient_light = Vec3::new(0.0, 0.0, 0.0);
 
-//     camera.ambient_light = Vec3::new(0.0, 0.0, 0.2);
-
-//     camera.init();
-//     camera.render(&world);
-// }
+    camera.init();
+    camera.render(&world, "lights.png");
+}
 
 // fn cornell_box_scene() {
 //     let mut world = World::new();
@@ -353,7 +356,7 @@ fn earth_scene() {
     let mat2 = MaterialType::BRDF(BRDFMaterialProps::basic_diffuse(Vec3::new(0.0, 0.9, 0.1)));
     world.add(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat2));
 
-    let mat3 = MaterialType::BRDF(BRDFMaterialProps::basic_metal(
+    let mat3 = MaterialType::BRDF(BRDFMaterialProps::basic_glossy(
         Vec3::new(0.7, 0.6, 0.5),
         0.9,
     ));
@@ -392,5 +395,10 @@ fn earth_scene() {
 }
 
 fn main() {
-    earth_scene();
+    let x = 1;
+    match x {
+        1 => earth_scene(),
+        2 => basic_light_scene(),
+        _ => (),
+    }
 }

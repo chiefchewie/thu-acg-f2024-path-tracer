@@ -5,6 +5,7 @@ use rand::{thread_rng, Rng};
 
 use crate::{
     hit_info::HitInfo,
+    material::Material,
     ray::Ray,
     texture::Texture,
     vec3::{Quat, Vec2, Vec3},
@@ -82,18 +83,15 @@ fn sample_specular(
 
 /// view_dir: the view direction
 /// alpha2d: the roughness params for x- and y- axis
-/// returns: a sampled half-vector on the microfacet distribution
+/// returns: a sampled microfacet normal on the microfacet distribution
 fn sample_specular_half_vector(view_dir: Vec3, alpha2d: Vec2) -> Vec3 {
     let mut rng = thread_rng();
 
     // make the orthonormal base v_h, t1, t2
     let v_h = Vec3::new(alpha2d.x * view_dir.x, alpha2d.y * view_dir.y, view_dir.z).normalize();
-    let lensq = v_h.x * v_h.x + v_h.y * v_h.y;
-    let v1 = if lensq > 0.0 {
-        Vec3::new(-v_h.y, v_h.x, 0.0) / lensq
-    } else {
-        Vec3::X
-    };
+    let v1 = Vec3::new(-v_h.y, v_h.x, 0.0)
+        .try_normalize()
+        .unwrap_or(Vec3::X);
     let v2 = v_h.cross(v1);
 
     let r1 = rng.gen::<f64>();
@@ -137,54 +135,33 @@ pub fn eval_direct_lighting(
     (Vec3::ONE - data.fresnel_term) * diffuse + specular
 }
 
-/// evaluate the attenuation and scattered direction
-pub fn eval_scatter(
-    ray: &Ray,
-    hit_info: &HitInfo,
-    mat: &BRDFMaterialProps,
-    brdf_type: BRDFType,
-) -> (Vec3, Option<Vec3>) {
-    let view_dir = -ray.direction();
-    let normal = hit_info.normal;
-
-    if normal.dot(view_dir) < 0.0 {
-        return (Vec3::ONE, None);
-    }
-
-    let rotation_to_z = get_rotation_to_z(normal);
-    let v_local = rotation_to_z * view_dir;
-    let (sample_weight, ray_dir_local) = match brdf_type {
-        BRDFType::DIFFUSE => {
-            let ray_dir_local = sample_hemisphere();
-            let sample_weight = mat.diffuse_reflectance(hit_info);
-            (sample_weight, ray_dir_local)
-        }
-        BRDFType::SPECULAR => {
-            let alpha = mat.roughness * mat.roughness;
-            let alpha_squared = alpha * alpha;
-            sample_specular(v_local, alpha, alpha_squared, mat.specular_f0(hit_info))
-        }
-    };
-
-    let ray_dir = rotation_to_z.inverse() * ray_dir_local;
-    (sample_weight, Some(ray_dir))
-}
-
 #[derive(Clone)]
 pub struct BRDFMaterialProps {
     base_color: Vec3,
-    metalness: f64, // a value in 0.0..=1.0
+    metalness: f64, // a value in 0.0..=1.0, how "metallic" the material is
 
     emission: Vec3,
     roughness: f64, // a value in 0.0..=1.0
 
     // TODO figure these out
     transmissiveness: f64,
-    opacity: f64,
+    opacity: f64, // a value in 0.0..=1.0, 0 being transparent 1 being opaque
     texture: Option<Arc<dyn Texture>>,
 }
 
 impl BRDFMaterialProps {
+    pub fn light(emission: Vec3) -> Self {
+        Self {
+            base_color: Vec3::ZERO,
+            metalness: 0.0,
+            emission,
+            roughness: 1.0,
+            transmissiveness: 0.0,
+            opacity: 1.0,
+            texture: None,
+        }
+    }
+
     pub fn texture_diffuse(texture: Arc<dyn Texture>) -> Self {
         Self {
             base_color: Vec3::ZERO,
@@ -197,7 +174,7 @@ impl BRDFMaterialProps {
         }
     }
 
-    pub fn texture_metal(texture: Arc<dyn Texture>, metalness: f64) -> Self {
+    pub fn texture_glossy(texture: Arc<dyn Texture>, metalness: f64) -> Self {
         Self {
             base_color: Vec3::ZERO,
             metalness,
@@ -221,12 +198,12 @@ impl BRDFMaterialProps {
         }
     }
 
-    pub fn basic_metal(base_color: Vec3, metalness: f64) -> Self {
+    pub fn basic_glossy(base_color: Vec3, metalness: f64) -> Self {
         Self {
             base_color,
             metalness,
             emission: Vec3::ZERO,
-            roughness: 0.0,
+            roughness: 0.4,
             transmissiveness: 0.0,
             opacity: 1.0,
             texture: None,
@@ -255,7 +232,7 @@ impl BRDFMaterialProps {
         }
     }
 
-    /// return probabilty of selecting SPECULAR vs DIFFUSE based on Fresnel term
+    /// return probabilty of selecting SPECULAR vs DIFFUSE based on Fresnel term, given we are reflecting
     pub fn get_brdf_probability(&self, ray: &Ray, hit_info: &HitInfo) -> f64 {
         // TODO for now just based it off of how "metallic" the material is
         let _ = ray;
@@ -296,6 +273,56 @@ impl BRDFMaterialProps {
 
         Vec3::new(MIN_DIELECTRICS_F0, MIN_DIELECTRICS_F0, MIN_DIELECTRICS_F0)
             .lerp(color, self.metalness)
+    }
+}
+
+impl Material for BRDFMaterialProps {
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
+        let eps = 1e-3;
+
+        // decide which type of reflection to use
+        let mut rng = thread_rng();
+        let (scatter_type, scatter_type_p) = if self.metalness() == 1.0 && self.roughness() == 0.0 {
+            (BRDFType::SPECULAR, 1.0)
+        } else {
+            let brdf_p = self.get_brdf_probability(&ray, &hit_info);
+            if rng.gen::<f64>() < brdf_p {
+                (BRDFType::SPECULAR, 1.0 / brdf_p)
+            } else {
+                (BRDFType::DIFFUSE, 1.0 / (1.0 - brdf_p))
+            }
+        };
+
+        // calculate the reflections
+        let view_dir = -ray.direction();
+        let normal = hit_info.normal;
+
+        if normal.dot(view_dir) < 0.0 {
+            return (Vec3::ONE, None);
+        }
+
+        let rotation_to_z = get_rotation_to_z(normal);
+        let v_local = rotation_to_z * view_dir;
+        let (sample_weight, ray_dir_local) = match scatter_type {
+            BRDFType::DIFFUSE => {
+                let ray_dir_local = sample_hemisphere();
+                let sample_weight = self.diffuse_reflectance(hit_info);
+                (sample_weight, ray_dir_local)
+            }
+            BRDFType::SPECULAR => {
+                let alpha = self.roughness * self.roughness;
+                let alpha_squared = alpha * alpha;
+                sample_specular(v_local, alpha, alpha_squared, self.specular_f0(hit_info))
+            }
+        };
+
+        let scatter_dir = rotation_to_z.inverse() * ray_dir_local;
+        let scatter_ray = Ray::new(
+            hit_info.point + eps * hit_info.normal,
+            scatter_dir,
+            ray.time(),
+        );
+        (sample_weight * scatter_type_p, Some(scatter_ray))
     }
 }
 

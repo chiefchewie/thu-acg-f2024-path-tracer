@@ -2,9 +2,9 @@ use rayon::prelude::*;
 use std::{f64::consts::PI, time::Instant};
 
 use crate::{
-    brdf::{self, eval_direct_lighting, eval_scatter, BRDFType},
+    brdf::eval_direct_lighting,
     interval::Interval,
-    material::MaterialType,
+    material::{Material, MaterialType},
     ray::Ray,
     vec3::{Luminance, Vec2, Vec3},
     Hittable, World,
@@ -141,7 +141,6 @@ impl Camera {
     }
 
     fn trace(&self, r: usize, c: usize, world: &World) -> Vec3 {
-        let mut rng = thread_rng();
         let eps = 1e-3;
         let min_bounces = 5; // TODO make min_bounces a parameter
 
@@ -155,71 +154,18 @@ impl Camera {
                 break;
             };
 
-            // light sampling
-            /*
-            // Evaluate direct light (next event estimation), start by sampling one light
-            Light light;
-            float lightWeight;
-            if (sampleLightRIS(rngState, payload.hitPosition, geometryNormal, light, lightWeight)) {
-
-                // Prepare data needed to evaluate the light
-                float3 lightVector;
-                float lightDistance;
-                getLightData(light, payload.hitPosition, lightVector, lightDistance);
-                float3 L = normalize(lightVector);
-
-                // Cast shadow ray towards the selected light
-                if (SHADOW_RAY_IN_RIS || castShadowRay(payload.hitPosition, geometryNormal, L, lightDistance))
-                {
-                    // If light is not in shadow, evaluate BRDF and accumulate its contribution into radiance
-                    radiance += throughput * evalCombinedBRDF(shadingNormal, L, V, material) * (getLightIntensityAtPoint(light, lightDistance) * lightWeight);
-                }
-            }
-            */
-
-            // // attenuation = brdf / pdf in the lingo
-            // let emission = match hit_info.mat {
-            //     MaterialType::DIFFUSE(ref diffuse) => {
-            //         diffuse.emitted(hit_info.u, hit_info.v, hit_info.point)
-            //     }
-            //     MaterialType::SPECULAR(ref specular) => {
-            //         specular.emitted(hit_info.u, hit_info.v, hit_info.point)
-            //     }
-            //     MaterialType::REFRACTIVE(ref refractive) => {
-            //         refractive.emitted(hit_info.u, hit_info.v, hit_info.point)
-            //     }
-            //     MaterialType::LIGHT(ref diffuse_light) => {
-            //         diffuse_light.emitted(hit_info.u, hit_info.v, hit_info.point)
-            //     }
-            // };
-            // radiance += emission * throughput;
-
-            // let (attenuation, scatter) = match hit_info.mat {
-            //     MaterialType::DIFFUSE(ref diffuse) => diffuse.scatter(&ray, &hit_info),
-            //     MaterialType::SPECULAR(ref specular) => specular.scatter(&ray, &hit_info),
-            //     MaterialType::REFRACTIVE(ref refractive) => refractive.scatter(&ray, &hit_info),
-            //     MaterialType::LIGHT(ref diffuse_light) => diffuse_light.scatter(&ray, &hit_info),
-            // };
-
-            // // should a BRDF always return a scatter ray?
-            // if let Some(scatter_ray) = scatter {
-            //     throughput *= attenuation; // should always execute this line?
-            //     ray = scatter_ray;
-            // } else {
-            //     break;
-            // }
-
-            // explictily sampling point lights for diffuse materials
-            // TODO explicitly sample SOME (random) lights, for ALL materials
             if let MaterialType::BRDF(ref brdf_mat) = hit_info.mat {
+                radiance += throughput * brdf_mat.emission();
+
+                // explictily sampling point lights for diffuse materials
+                // TODO explicitly sample SOME (random) lights, for ALL materials
                 for light in &world.lights {
                     let result = world.shadow_ray(hit_info.point, light.position, ray.time());
                     if result {
                         let light_dir = (light.position - hit_info.point).normalize();
                         let len = (light.position - hit_info.point).length();
-                        radiance += throughput
-                            * eval_direct_lighting(&ray, &hit_info, light_dir, brdf_mat)
-                            / (len * len);
+                        let c = eval_direct_lighting(&ray, &hit_info, light_dir, brdf_mat);
+                        radiance += throughput * c / (len * len);
                     }
                 }
             }
@@ -235,30 +181,17 @@ impl Camera {
             }
 
             // attenuatino = brdfWeight = brdf/pdf
-            let (attenuation, scatter_dir) = match hit_info.mat {
+            let (attenuation, next_ray) = match hit_info.mat {
                 MaterialType::BRDF(ref brdf_material) => {
-                    let brdf_type =
-                        if brdf_material.metalness() == 1.0 && brdf_material.roughness() == 0.0 {
-                            brdf::BRDFType::SPECULAR
-                        } else {
-                            let brdf_p = brdf_material.get_brdf_probability(&ray, &hit_info);
-                            if rng.gen::<f64>() < brdf_p {
-                                throughput /= brdf_p;
-                                BRDFType::SPECULAR
-                            } else {
-                                throughput /= 1.0 - brdf_p;
-                                BRDFType::DIFFUSE
-                            }
-                        };
-                    eval_scatter(&ray, &hit_info, brdf_material, brdf_type)
+                    brdf_material.scatter(&ray, &hit_info)
                 }
                 MaterialType::LIGHT(_) => {
                     (Vec3::ONE, None) // TODO
                 }
             };
-            if let Some(dir) = scatter_dir {
+            if let Some(scatter_ray) = next_ray {
                 throughput *= attenuation;
-                ray = Ray::new(hit_info.point + 1e-3 * hit_info.normal, dir, ray.time());
+                ray = scatter_ray;
             } else {
                 break;
             }
