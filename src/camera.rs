@@ -200,6 +200,9 @@ impl Camera {
                 MaterialType::LIGHT(ref diffuse_light) => {
                     diffuse_light.emitted(hit_info.u, hit_info.v, hit_info.point)
                 }
+                MaterialType::MIX(ref mix_material) => {
+                    mix_material.emitted(hit_info.u, hit_info.v, hit_info.point)
+                }
             };
             radiance += emission * throughput;
 
@@ -219,6 +222,7 @@ impl Camera {
                 MaterialType::SPECULAR(ref specular) => specular.scatter(&ray, &hit_info),
                 MaterialType::REFRACTIVE(ref refractive) => refractive.scatter(&ray, &hit_info),
                 MaterialType::LIGHT(ref diffuse_light) => diffuse_light.scatter(&ray, &hit_info),
+                MaterialType::MIX(ref mix_material) => mix_material.scatter(&ray, &hit_info),
             };
             if let Some(scatter_ray) = next_ray {
                 throughput *= attenuation;

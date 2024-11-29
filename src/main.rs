@@ -3,7 +3,7 @@ use std::sync::Arc;
 use path_tracer::{
     camera::Camera,
     light::PointLight,
-    material::{Diffuse, DiffuseLight, MaterialType, Refractive, Specular},
+    material::{Diffuse, DiffuseLight, MaterialType, MixMaterial, Refractive, Specular},
     quad::Quad,
     sphere::Sphere,
     texture::{CheckerTexture, ImageTexture},
@@ -114,7 +114,7 @@ fn earth_scene() {
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 1024;
-    camera.samples_per_pixel = 100;
+    camera.samples_per_pixel = 200;
     camera.max_depth = 10;
 
     camera.vfov = 28.0;
@@ -203,23 +203,34 @@ fn basic_light_scene() {
         Vec3::new(0.0, -1000.0, 0.0),
         red.clone(),
     ));
+
+    // plasticy cermaicy material???
+    let mat1a = Diffuse::from_rgb(Vec3::new(0.7, 0.9, 0.5));
+    let mat1b = Specular::from_rgb(Vec3::ONE, 0.1);
+    let mat1 = MaterialType::MIX(MixMaterial::new(0.05, Arc::new(mat1a), Arc::new(mat1b)));
+    world.add(Sphere::new_still(2.0, Vec3::new(-4.0, 2.0, 0.0), mat1));
+
+    let mat_diffuse = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::ONE));
     world.add(Sphere::new_still(
         2.0,
         Vec3::new(0.0, 2.0, 0.0),
-        red.clone(),
+        mat_diffuse,
     ));
 
-    let diffuse_light = MaterialType::LIGHT(DiffuseLight::from_rgb(Vec3::new(14.0, 14.0, 14.0)));
+    let mat_metal = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.8, 0.6, 0.2), 0.2));
+    world.add(Sphere::new_still(2.0, Vec3::new(4.0, 2.0, 0.0), mat_metal));
+
+    let diffuse_light = MaterialType::LIGHT(DiffuseLight::from_rgb(Vec3::new(10.0, 10.0, 10.0)));
     world.add(Quad::new(
-        Vec3::new(3.0, 1.0, -2.0),
-        Vec3::new(2.0, 0.0, 0.0),
-        Vec3::new(0.0, 2.0, 0.0),
+        Vec3::new(-2.0, 6.5, 0.0),
+        Vec3::new(4.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 2.0),
         diffuse_light,
     ));
 
     world.add_light(PointLight {
-        position: Vec3::new(4.0, 5.0, 0.0),
-        power: Vec3::new(1.0, 9.0, 1.0),
+        position: Vec3::new(-2.0, 2.0, 8.0),
+        power: Vec3::new(0.1, 0.5, 8.1),
     });
 
     world.build_bvh();
@@ -227,11 +238,11 @@ fn basic_light_scene() {
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 400;
-    camera.samples_per_pixel = 100;
+    camera.samples_per_pixel = 1000;
     camera.max_depth = 50;
 
-    camera.vfov = 20.0;
-    camera.look_from = Vec3::new(26.0, 3.0, 6.0);
+    camera.vfov = 30.0;
+    camera.look_from = Vec3::new(0.0, 3.0, 17.0);
     camera.look_at = Vec3::new(0.0, 2.0, 0.0);
     camera.vup = Vec3::new(0.0, 1.0, 0.0);
 
@@ -239,7 +250,7 @@ fn basic_light_scene() {
     camera.focal_length = 10.0;
     camera.defocus_angle = 0.0;
 
-    camera.ambient_light = Vec3::new(0.0, 0.0, 0.0);
+    camera.ambient_light = Vec3::new(0.2, 0.2, 0.2);
 
     camera.init();
     camera.render(&world, "lights.png");
@@ -327,7 +338,7 @@ fn cornell_box_scene() {
 }
 
 fn main() {
-    let x = 1;
+    let x = 4;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),

@@ -1,18 +1,17 @@
 use std::{f64::consts::PI, sync::Arc};
 
-use glam::FloatExt;
 use rand::{thread_rng, Rng};
 
 use crate::{
     hit_info::HitInfo,
     ray::Ray,
     texture::{SolidColorTexture, Texture},
-    vec3::{get_rotation_to_z, Vec2, Vec3},
+    vec3::{random_vector, Vec3},
 };
 
 const EPS: f64 = 1e-3;
 
-pub trait Material {
+pub trait Material: Send + Sync {
     /// returns: attenuation (brdf/pdf), and optionally the scattered ray
     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>);
     fn emitted(&self, _u: f64, _v: f64, _p: Vec3) -> Vec3 {
@@ -83,92 +82,13 @@ impl Specular {
             roughness,
         }
     }
-
-    fn f0(&self, hit_info: &HitInfo) -> Vec3 {
-        self.texture.value(hit_info.u, hit_info.v, &hit_info.point)
-    }
-
-    fn sample_specular(
-        v_local: Vec3,
-        alpha: f64,
-        alpha_squared: f64,
-        specular_f0: Vec3,
-    ) -> (Vec3, Vec3) {
-        let n_local = Vec3::Z;
-
-        // H is a microfact normal
-        let h_local = if alpha == 0.0 {
-            // no roughness -> no microfacets
-            n_local
-        } else {
-            // sample from the half-vector distribution
-            Self::sample_microfacet_normal(v_local, Vec2::new(alpha, alpha))
-        };
-
-        // reflect the view direction
-        let l_local = (-v_local).reflect(h_local);
-
-        let h_dot_l = h_local.dot(l_local).clamp(EPS, 1.0);
-        let n_dot_l = n_local.dot(l_local).clamp(EPS, 1.0);
-        let n_dot_v = n_local.dot(v_local).clamp(EPS, 1.0);
-        let fresnel = Self::eval_fresnel(specular_f0, h_dot_l);
-
-        let weight = fresnel * Self::sample_specular_weight(alpha_squared, n_dot_l, n_dot_v);
-        (weight, l_local)
-    }
-
-    /// view_dir: the view direction
-    /// alpha2d: the roughness params for x- and y- axis
-    /// returns: a sampled microfacet half normal on the microfacet distribution (GGX)
-    fn sample_microfacet_normal(view_dir: Vec3, alpha2d: Vec2) -> Vec3 {
-        let mut rng = thread_rng();
-
-        // make the orthonormal base v_h, t1, t2
-        let v_h = Vec3::new(alpha2d.x * view_dir.x, alpha2d.y * view_dir.y, view_dir.z).normalize();
-        let v1 = Vec3::new(-v_h.y, v_h.x, 0.0)
-            .try_normalize()
-            .unwrap_or(Vec3::X);
-        let v2 = v_h.cross(v1);
-
-        let r1 = rng.gen::<f64>();
-        let r = r1.sqrt();
-        let phi = rng.gen_range(0.0..2.0 * PI);
-        let s = 0.5 * (1.0 + v_h.z);
-        let t1 = r * phi.cos();
-        let t2 = (1.0 - t1 * t1).sqrt().lerp(r * phi.sin(), s);
-
-        let n_h = t1 * v1 + t2 * v2 + (1.0 - t1 * t1 - t2 * t2).max(0.0).sqrt() * v_h;
-
-        Vec3::new(alpha2d.x * n_h.x, alpha2d.y * n_h.y, n_h.z.max(0.0)).normalize()
-    }
-    fn sample_specular_weight(alpha_squared: f64, n_dot_l: f64, n_dot_v: f64) -> f64 {
-        let g1v = Self::smith_g1(alpha_squared, n_dot_v * n_dot_v);
-        let g1l = Self::smith_g1(alpha_squared, n_dot_l * n_dot_l);
-        g1l / (g1v + g1l - g1v * g1l)
-    }
-    fn smith_g1(alpha_squared: f64, n_dot_s_sqrd: f64) -> f64 {
-        2.0 / ((((alpha_squared * (1.0 - n_dot_s_sqrd)) + n_dot_s_sqrd) / n_dot_s_sqrd).sqrt()
-            + 1.0)
-    }
-    fn eval_fresnel(f0: Vec3, cosine: f64) -> Vec3 {
-        f0 + (1.0 - f0) * (1.0 - cosine).powi(5)
-    }
 }
 
 impl Material for Specular {
     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
-        let view_dir = -ray.direction();
-
-        // transform to tangent space
-        let rotation_to_z = get_rotation_to_z(hit_info.normal);
-        let v_local = rotation_to_z * view_dir;
-        let alpha = self.roughness * self.roughness * self.roughness;
-        let alpha_squared = alpha * alpha;
-
-        let (attenuation, dir_local) =
-            Self::sample_specular(v_local, alpha, alpha_squared, self.f0(hit_info));
-
-        let scatter_dir = rotation_to_z.inverse() * dir_local;
+        let attenuation = self.texture.value(hit_info.u, hit_info.v, &hit_info.point);
+        let reflect_dir = ray.direction().reflect(hit_info.normal);
+        let scatter_dir = reflect_dir + (self.roughness * random_vector());
         (
             attenuation,
             Some(Ray::new(
@@ -258,16 +178,44 @@ impl Material for DiffuseLight {
 }
 
 #[derive(Clone)]
+pub struct MixMaterial {
+    t: f64, // 0 = use mat1 entirely, 1 = use mat2 entirely
+    mat1: Arc<dyn Material>,
+    mat2: Arc<dyn Material>,
+}
+
+impl MixMaterial {
+    pub fn new(t: f64, mat1: Arc<dyn Material>, mat2: Arc<dyn Material>) -> MixMaterial {
+        Self {
+            t: t.clamp(0.0, 1.0),
+            mat1,
+            mat2,
+        }
+    }
+}
+
+impl Material for MixMaterial {
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
+        let p: f64 = thread_rng().gen();
+        if self.t < p {
+            self.mat1.scatter(ray, hit_info)
+        } else {
+            self.mat2.scatter(ray, hit_info)
+        }
+    }
+}
+
+#[derive(Clone)]
 pub enum MaterialType {
     DIFFUSE(Diffuse),
     SPECULAR(Specular),
     REFRACTIVE(Refractive),
     LIGHT(DiffuseLight),
+    MIX(MixMaterial),
 }
 
 impl Default for MaterialType {
     fn default() -> Self {
-        // Self::SPECULAR(Specular { albedo: Vec3::ZERO })
-        Self::LIGHT(DiffuseLight::from_rgb(Vec3::ZERO))
+        Self::DIFFUSE(Diffuse::from_rgb(Vec3::ONE))
     }
 }
