@@ -1,14 +1,13 @@
-use std::sync::Arc;
+use std::{f64::consts::PI, sync::Arc};
+use std::env;
 
 use path_tracer::{
     camera::Camera,
+    hittable::{Cuboid, Instance, Quad, Sphere, World},
     light::PointLight,
     material::{Diffuse, DiffuseLight, MaterialType, MixMaterial, Refractive, Specular},
-    quad::Quad,
-    sphere::Sphere,
     texture::{CheckerTexture, ImageTexture},
     vec3::{random_vector, random_vector_range, Vec3},
-    World,
 };
 use rand::{thread_rng, Rng};
 
@@ -259,19 +258,19 @@ fn basic_light_scene() {
 fn cornell_box_scene() {
     let mut world = World::new();
 
-    let mat1 = MaterialType::REFRACTIVE(Refractive::new(1.5));
-    world.add(Sphere::new_still(
-        105.0,
-        Vec3::new(413.0, 170.0, 372.0),
-        mat1,
-    ));
+    // let mat1 = MaterialType::REFRACTIVE(Refractive::new(1.5));
+    // world.add(Sphere::new_still(
+    //     105.0,
+    //     Vec3::new(413.0, 170.0, 372.0),
+    //     mat1,
+    // ));
 
-    let mat2 = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.7, 0.6, 0.5), 0.0));
-    world.add(Sphere::new_still(
-        135.0,
-        Vec3::new(113.0, 170.0, 372.0),
-        mat2,
-    ));
+    // let mat2 = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.7, 0.6, 0.5), 0.0));
+    // world.add(Sphere::new_still(
+    //     135.0,
+    //     Vec3::new(113.0, 170.0, 372.0),
+    //     mat2,
+    // ));
 
     let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
     let white = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.73, 0.73, 0.73)));
@@ -314,12 +313,27 @@ fn cornell_box_scene() {
         white.clone(),
     ));
 
-    world.build_bvh();
+    let box1 = Arc::new(Cuboid::new(
+        Vec3::ZERO,
+        Vec3::new(165.0, 330.0, 165.0),
+        white.clone(),
+    ));
+    let box1 = Instance::new(box1, Vec3::Y, PI/6.0, Vec3::new(265.0, 0.0, 295.0));
+    world.add(box1);
 
+    let box2 = Arc::new(Cuboid::new(
+        Vec3::ZERO,
+        Vec3::new(165.0, 165.0, 165.0),
+        white.clone(),
+    ));
+    let box2 = Instance::new(box2, Vec3::Y, -0.29, Vec3::new(130.0, 0.0, 65.0));
+    world.add(box2);
+
+    world.build_bvh();
     let mut camera = Camera::new();
     camera.aspect_ratio = 1.0;
     camera.image_width = 900;
-    camera.samples_per_pixel = 400;
+    camera.samples_per_pixel = 100;
     camera.max_depth = 20;
 
     camera.vfov = 40.0;
@@ -338,7 +352,9 @@ fn cornell_box_scene() {
 }
 
 fn main() {
-    let x = 4;
+    env::set_var("RUST_BACKTRACE", "1");
+
+    let x = 5;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),

@@ -1,7 +1,6 @@
-use crate::{
-    aabb::AABB, hit_info::HitInfo, interval::Interval, material::MaterialType, ray::Ray,
-    vec3::Vec3, Hittable,
-};
+use crate::{interval::Interval, material::MaterialType, ray::Ray, vec3::Vec3};
+
+use super::{hit_info::HitInfo, Hittable, AABB};
 
 pub struct Quad {
     q: Vec3,

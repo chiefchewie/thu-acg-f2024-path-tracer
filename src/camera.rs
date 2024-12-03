@@ -2,11 +2,11 @@ use rayon::prelude::*;
 use std::{f64::consts::PI, time::Instant};
 
 use crate::{
+    hittable::{Hittable, World},
     interval::Interval,
     material::{Material, MaterialType},
     ray::Ray,
     vec3::{Luminance, Vec2, Vec3},
-    Hittable, World,
 };
 use image::{ImageBuffer, Rgb};
 use rand::{thread_rng, Rng};
@@ -175,7 +175,7 @@ impl Camera {
             // explictily sampling point lights for diffuse materials
             // TODO explicitly sample ALL lights, for ALL materials
             if let MaterialType::DIFFUSE(_) = hit_info.mat {
-                for light in &world.lights {
+                for light in world.get_lights() {
                     let result = world.shadow_ray(hit_info.point, light.position, ray.time());
                     if result {
                         let light_dir = (light.position - hit_info.point).normalize();

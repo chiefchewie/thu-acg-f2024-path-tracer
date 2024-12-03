@@ -1,10 +1,12 @@
-use core::f64;
 use std::f64::consts::PI;
 
-use crate::{
-    aabb::AABB, hit_info::HitInfo, interval::Interval, material::MaterialType, ray::Ray,
-    vec3::Vec3, Hittable,
-};
+use crate::interval::Interval;
+use crate::ray::Ray;
+use crate::{material::MaterialType, vec3::Vec3};
+
+use super::hit_info::HitInfo;
+use super::Hittable;
+use super::AABB;
 
 #[derive(Clone)]
 pub struct Sphere {

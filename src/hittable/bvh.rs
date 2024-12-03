@@ -1,6 +1,7 @@
+use crate::{hittable::HitInfo, interval::Interval, ray::Ray};
 use std::{cmp::Ordering, sync::Arc};
 
-use crate::{aabb::AABB, hit_info::HitInfo, interval::Interval, ray::Ray, Hittable};
+use super::{Hittable, AABB};
 
 pub enum BVHNode {
     Leaf {

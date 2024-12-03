@@ -3,7 +3,7 @@ use std::{f64::consts::PI, sync::Arc};
 use rand::{thread_rng, Rng};
 
 use crate::{
-    hit_info::HitInfo,
+    hittable::hit_info::HitInfo,
     ray::Ray,
     texture::{SolidColorTexture, Texture},
     vec3::{random_vector, Vec3},

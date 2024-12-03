@@ -1,4 +1,10 @@
-use crate::{interval::Interval, ray::Ray, vec3::Vec3};
+use std::ops::Add;
+
+use crate::{
+    interval::Interval,
+    ray::Ray,
+    vec3::{Mat4, Vec3},
+};
 
 #[derive(Clone, Copy)]
 pub struct AABB {
@@ -75,6 +81,34 @@ impl AABB {
     pub fn extent(&self) -> Vec3 {
         self.max - self.min
     }
+
+    pub fn transform(&self, mat: Mat4) -> AABB {
+        let corners = [
+            self.min,
+            Vec3::new(self.min.x, self.min.y, self.max.z),
+            Vec3::new(self.min.x, self.max.y, self.min.z),
+            Vec3::new(self.min.x, self.max.y, self.max.z),
+            Vec3::new(self.max.x, self.min.y, self.min.z),
+            Vec3::new(self.max.x, self.min.y, self.max.z),
+            Vec3::new(self.max.x, self.max.y, self.min.z),
+            self.max,
+        ];
+
+        let transformed_corners: Vec<Vec3> = corners
+            .iter()
+            .map(|&corner| mat.transform_point3(corner))
+            .collect();
+        let mut new_min = Vec3::splat(f64::INFINITY);
+        let mut new_max = Vec3::splat(f64::NEG_INFINITY);
+        for corner in transformed_corners {
+            new_min = new_min.min(corner);
+            new_max = new_max.max(corner);
+        }
+        AABB {
+            min: new_min,
+            max: new_max,
+        }
+    }
 }
 
 impl Default for AABB {
@@ -82,6 +116,17 @@ impl Default for AABB {
         Self {
             min: Vec3::ZERO,
             max: Vec3::ZERO,
+        }
+    }
+}
+
+impl Add<Vec3> for AABB {
+    type Output = AABB;
+
+    fn add(self, rhs: Vec3) -> Self::Output {
+        AABB {
+            min: self.min + rhs,
+            max: self.max + rhs,
         }
     }
 }
