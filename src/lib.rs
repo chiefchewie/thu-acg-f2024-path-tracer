@@ -8,3 +8,4 @@ pub mod texture;
 pub mod utils;
 pub mod vec3;
 pub mod volume;
+pub mod bsdf;

@@ -3,10 +3,7 @@ use std::{f64::consts::PI, sync::Arc};
 use rand::{thread_rng, Rng};
 
 use crate::{
-    hittable::hit_info::HitInfo,
-    ray::Ray,
-    texture::{SolidColorTexture, Texture},
-    vec3::{random_vector, Vec3},
+    bsdf::BRDF, hittable::hit_info::HitInfo, ray::Ray, texture::{SolidColorTexture, Texture}, vec3::{random_vector, Vec3}
 };
 
 const EPS: f64 = 1e-3;
@@ -212,6 +209,7 @@ pub enum MaterialType {
     REFRACTIVE(Refractive),
     LIGHT(DiffuseLight),
     MIX(MixMaterial),
+    BRDFMat(BRDF)
 }
 
 impl Default for MaterialType {
