@@ -266,8 +266,6 @@ fn cornell_box_scene() {
     //     mat1,
     // ));
 
-    
-
     let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
     let white = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.73, 0.73, 0.73)));
     let green = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.12, 0.45, 0.15)));
@@ -309,7 +307,6 @@ fn cornell_box_scene() {
         white.clone(),
     ));
 
-    
     let diffuse_brdf = MaterialType::BRDFMat(BRDF {
         base_color: Vec3::new(0.12, 0.45, 0.15),
         metallic: 0.001,
@@ -322,9 +319,9 @@ fn cornell_box_scene() {
         clearcoat: 0.0,
         clearcoat_roughness: 0.0,
         ior: 1.5,
-        anisotropic:0.0,
+        anisotropic: 0.0,
     });
-    let diffuse = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.12,0.45,0.15)));
+    let diffuse = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.12, 0.45, 0.15)));
     let specular_brdf = MaterialType::BRDFMat(BRDF {
         base_color: Vec3::new(0.8, 0.85, 0.88),
         metallic: 0.999,
@@ -337,20 +334,20 @@ fn cornell_box_scene() {
         clearcoat: 0.0,
         clearcoat_roughness: 0.0,
         ior: 1.5,
-        anisotropic:0.0
+        anisotropic: 0.0,
     });
-    let specular = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.8,0.85,0.88), 0.0));
+    let specular = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.8, 0.85, 0.88), 0.0));
 
     world.add(Sphere::new_still(
         135.0,
         Vec3::new(113.0, 170.0, 372.0),
-        diffuse_brdf
+        diffuse_brdf,
     ));
 
     let box1 = Arc::new(Cuboid::new(
         Vec3::ZERO,
         Vec3::new(165.0, 330.0, 165.0),
-        specular
+        specular,
     ));
     let box1 = Instance::new(box1, Vec3::Y, 0.261799, Vec3::new(265.0, 0.0, 295.0));
     world.add(box1);

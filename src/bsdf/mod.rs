@@ -191,10 +191,11 @@ impl BRDF {
         // sheen
         let f_h = schlick_weight(l_dot_h);
         let sheen = self.sheen * csheen * f_h;
-        
+
         let brdf = self.base_color
             * PI.recip()
-            * (f_retro + subsurface_approx * (1.0 - 0.5 * fl) * (1.0 - 0.5 * fv)) + sheen;
+            * (f_retro + subsurface_approx * (1.0 - 0.5 * fl) * (1.0 - 0.5 * fv))
+            + sheen;
         let pdf = l_local.z * PI.recip();
         (brdf, pdf)
     }

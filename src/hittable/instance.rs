@@ -19,8 +19,7 @@ pub struct Instance {
 impl Instance {
     pub fn new(object: Arc<dyn Hittable>, axis: Vec3, angle: f64, translation: Vec3) -> Instance {
         let rotation = Quat::from_axis_angle(axis, angle);
-        let transform =
-            Mat4::from_rotation_translation(rotation, translation);
+        let transform = Mat4::from_rotation_translation(rotation, translation);
         let bbox = object.bounding_box().transform(transform);
         Instance {
             object,
