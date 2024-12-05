@@ -38,9 +38,7 @@ impl Hittable for Instance {
         let local_ray = Ray::new(local_origin, local_dir, ray.time());
 
         // ray collision
-        let Some(info) = self.object.intersects(&local_ray, ray_t) else {
-            return None;
-        };
+        let info = self.object.intersects(&local_ray, ray_t)?;
 
         // transform hit collision back to world coordinates
         let world_point = self.transform.transform_point3(info.point);

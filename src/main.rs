@@ -321,7 +321,6 @@ fn cornell_box_scene() {
         ior: 1.5,
         anisotropic: 0.0,
     });
-    let diffuse = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.12, 0.45, 0.15)));
     let specular_brdf = MaterialType::BRDFMat(BRDF {
         base_color: Vec3::new(0.8, 0.85, 0.88),
         metallic: 0.999,
@@ -336,7 +335,6 @@ fn cornell_box_scene() {
         ior: 1.5,
         anisotropic: 0.0,
     });
-    let specular = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.8, 0.85, 0.88), 0.0));
 
     world.add(Sphere::new_still(
         135.0,
@@ -347,7 +345,7 @@ fn cornell_box_scene() {
     let box1 = Arc::new(Cuboid::new(
         Vec3::ZERO,
         Vec3::new(165.0, 330.0, 165.0),
-        specular,
+        specular_brdf,
     ));
     let box1 = Instance::new(box1, Vec3::Y, 0.261799, Vec3::new(265.0, 0.0, 295.0));
     world.add(box1);
@@ -364,7 +362,7 @@ fn cornell_box_scene() {
     let mut camera = Camera::new();
     camera.aspect_ratio = 1.0;
     camera.image_width = 900;
-    camera.samples_per_pixel = 100;
+    camera.samples_per_pixel = 1000;
     camera.max_depth = 20;
 
     camera.vfov = 40.0;

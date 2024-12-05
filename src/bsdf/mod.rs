@@ -30,8 +30,7 @@ impl BRDF {
     // assume we are already in tangent space
     fn sample(&self, v_local: Vec3, n_local: Vec3) -> Vec3 {
         let _ = n_local;
-        let (f0, cspec0, csheen) = self.tint_colors();
-        // let (_, _) = (f0, csheen);
+        let (_, cspec0, _) = self.tint_colors();
 
         // weights and probabilities
         let dielectric_wt = 1.0 - self.metallic;
@@ -50,9 +49,8 @@ impl BRDF {
 
         let rand_choice: f64 = rand::random();
 
-        let dir = if rand_choice < diffuse_p {
-            let l_local = cosine_sample_hemisphere();
-            l_local
+        if rand_choice < diffuse_p {
+            cosine_sample_hemisphere()
         } else if rand_choice < diffuse_p + dielectric_p + metal_p {
             let aspect = (1.0 - self.anisotropic * 0.9).sqrt();
             let ax = (self.roughness.powi(2) / aspect).max(0.001);
@@ -65,13 +63,10 @@ impl BRDF {
                     h
                 }
             };
-            let l_local = (-v_local).reflect(h_local);
-            l_local
+            (-v_local).reflect(h_local)
         } else {
             todo!() // TODO
-        };
-
-        dir
+        }
     }
 
     fn eval(&self, v_local: Vec3, n_local: Vec3, l_local: Vec3) -> (Vec3, f64) {
@@ -264,7 +259,7 @@ fn dielectric_fresnel(cos_theta_i: f64, eta: f64) -> f64 {
     let rs = (eta * cos_theta_t - cos_theta_i) / (eta * cos_theta_t + cos_theta_i);
     let rp = (eta * cos_theta_i - cos_theta_t) / (eta * cos_theta_i + cos_theta_t);
 
-    return 0.5 * (rs * rs + rp * rp);
+    0.5 * (rs * rs + rp * rp)
 }
 
 impl Material for BRDF {
@@ -280,14 +275,15 @@ impl Material for BRDF {
         let l_local = self.sample(v_local, n_local);
         let (brdf, pdf) = self.eval(v_local, n_local, l_local);
 
-        let t1 = brdf / pdf;
-        let t2 = self.base_color;
+        let _t1 = brdf / pdf;
+        let _t2 = self.base_color;
 
         let ray_dir = to_world(normal, l_local);
+        let sign = ray_dir.dot(normal).signum();
         (
             brdf / pdf,
             Some(Ray::new(
-                hit_info.point + ray_dir * eps,
+                hit_info.point + normal * (eps * sign),
                 ray_dir,
                 ray.time(),
             )),
