@@ -259,13 +259,6 @@ fn basic_light_scene() {
 fn cornell_box_scene() {
     let mut world = World::new();
 
-    // let mat1 = MaterialType::REFRACTIVE(Refractive::new(1.5));
-    // world.add(Sphere::new_still(
-    //     105.0,
-    //     Vec3::new(413.0, 170.0, 372.0),
-    //     mat1,
-    // ));
-
     let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
     let white = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.73, 0.73, 0.73)));
     let green = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.12, 0.45, 0.15)));
@@ -324,7 +317,7 @@ fn cornell_box_scene() {
     let specular_brdf = MaterialType::BRDFMat(BRDF {
         base_color: Vec3::new(0.8, 0.85, 0.88),
         metallic: 0.999,
-        roughness: 0.0001,
+        roughness: 0.2001,
         subsurface: 0.0,
         spec_trans: 0.0,
         specular_tint: 0.0,
@@ -336,33 +329,39 @@ fn cornell_box_scene() {
         anisotropic: 0.0,
     });
 
+    let mat1 = MaterialType::REFRACTIVE(Refractive::new(1.5));
+    world.add(Sphere::new_still(
+        105.0,
+        Vec3::new(413.0, 170.0, 372.0),
+        diffuse_brdf,
+    ));
     world.add(Sphere::new_still(
         135.0,
         Vec3::new(113.0, 170.0, 372.0),
-        diffuse_brdf,
-    ));
-
-    let box1 = Arc::new(Cuboid::new(
-        Vec3::ZERO,
-        Vec3::new(165.0, 330.0, 165.0),
         specular_brdf,
     ));
-    let box1 = Instance::new(box1, Vec3::Y, 0.261799, Vec3::new(265.0, 0.0, 295.0));
-    world.add(box1);
 
-    let box2 = Arc::new(Cuboid::new(
-        Vec3::ZERO,
-        Vec3::new(165.0, 165.0, 165.0),
-        white.clone(),
-    ));
-    let box2 = Instance::new(box2, Vec3::Y, -0.29, Vec3::new(130.0, 0.0, 65.0));
-    world.add(box2);
+    // let box1 = Arc::new(Cuboid::new(
+    //     Vec3::ZERO,
+    //     Vec3::new(165.0, 330.0, 165.0),
+    //     specular_brdf,
+    // ));
+    // let box1 = Instance::new(box1, Vec3::Y, 0.261799, Vec3::new(265.0, 0.0, 295.0));
+    // world.add(box1);
+
+    // let box2 = Arc::new(Cuboid::new(
+    //     Vec3::ZERO,
+    //     Vec3::new(165.0, 165.0, 165.0),
+    //     white.clone(),
+    // ));
+    // let box2 = Instance::new(box2, Vec3::Y, -0.29, Vec3::new(130.0, 0.0, 65.0));
+    // world.add(box2);
 
     world.build_bvh();
     let mut camera = Camera::new();
     camera.aspect_ratio = 1.0;
     camera.image_width = 900;
-    camera.samples_per_pixel = 1000;
+    camera.samples_per_pixel = 100;
     camera.max_depth = 20;
 
     camera.vfov = 40.0;

@@ -28,19 +28,21 @@ pub struct BRDF {
 
 impl BRDF {
     // assume we are already in tangent space
-    fn sample(&self, v_local: Vec3, n_local: Vec3) -> Vec3 {
-        let _ = n_local;
+    fn sample(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
+        let view_dir = -ray.direction();
+        let v_local = to_local(info.normal, view_dir);
+
         let (_, cspec0, _) = self.tint_colors();
 
         // weights and probabilities
         let dielectric_wt = 1.0 - self.metallic;
         let metal_wt = self.metallic;
 
-        let f = schlick_weight(v_local.z);
+        let schlick_wt = schlick_weight(v_local.z);
 
         let diffuse_p = dielectric_wt * self.base_color.luminance();
-        let dielectric_p = dielectric_wt * cspec0.lerp(Vec3::ONE, f).luminance();
-        let metal_p = metal_wt * self.base_color.lerp(Vec3::ONE, f).luminance();
+        let dielectric_p = dielectric_wt * cspec0.lerp(Vec3::ONE, schlick_wt).luminance();
+        let metal_p = metal_wt * self.base_color.lerp(Vec3::ONE, schlick_wt).luminance();
         let total = diffuse_p + dielectric_p + metal_p;
 
         let diffuse_p = diffuse_p / total;
@@ -50,7 +52,8 @@ impl BRDF {
         let rand_choice: f64 = rand::random();
 
         if rand_choice < diffuse_p {
-            cosine_sample_hemisphere()
+            let diffuse_dir_local = cosine_sample_hemisphere();
+            Some(to_world(info.normal, diffuse_dir_local))
         } else if rand_choice < diffuse_p + dielectric_p + metal_p {
             let aspect = (1.0 - self.anisotropic * 0.9).sqrt();
             let ax = (self.roughness.powi(2) / aspect).max(0.001);
@@ -63,14 +66,23 @@ impl BRDF {
                     h
                 }
             };
-            (-v_local).reflect(h_local)
+            let specular_dir_local = (-v_local).reflect(h_local);
+            let specular_dir = to_world(info.normal, specular_dir_local);
+            if specular_dir.dot(info.normal) <= 0.0 {
+                None
+            } else {
+                Some(specular_dir)
+            }
         } else {
-            todo!() // TODO
+            None // TODO clearcoat and transmissive
         }
     }
 
-    fn eval(&self, v_local: Vec3, n_local: Vec3, l_local: Vec3) -> (Vec3, f64) {
-        let _ = n_local;
+    fn eval(&self, ray: &Ray, light_dir: Vec3, info: &HitInfo) -> (Vec3, f64) {
+        let view_dir = -ray.direction();
+        let v_local = to_local(info.normal, view_dir);
+        let l_local = to_local(info.normal, light_dir);
+
         let mut pdf = 0.0;
         let mut brdf = Vec3::ZERO;
 
@@ -94,11 +106,11 @@ impl BRDF {
         let dielectric_wt = 1.0 - self.metallic;
         let metal_wt = self.metallic;
 
-        let f = schlick_weight(v_local.z);
+        let schlick_wt = schlick_weight(v_local.z);
 
         let diffuse_p = dielectric_wt * self.base_color.luminance();
-        let dielectric_p = dielectric_wt * cspec0.lerp(Vec3::ONE, f).luminance();
-        let metal_p = metal_wt * self.base_color.lerp(Vec3::ONE, f).luminance();
+        let dielectric_p = dielectric_wt * cspec0.lerp(Vec3::ONE, schlick_wt).luminance();
+        let metal_p = metal_wt * self.base_color.lerp(Vec3::ONE, schlick_wt).luminance();
         let total = diffuse_p + dielectric_p + metal_p;
 
         let diffuse_p = diffuse_p / total;
@@ -108,29 +120,31 @@ impl BRDF {
         let should_reflect = l_local.z * v_local.z > 0.0;
         let v_dot_h = v_local.dot(h_local).abs();
 
-        // Diffuse
-        if diffuse_p > 0.0 {
-            let (res_brdf, res_pdf) = self.eval_diffuse(csheen, v_local, l_local, h_local);
-            brdf += res_brdf * dielectric_wt;
-            pdf += res_pdf * diffuse_p;
-        }
+        if should_reflect {
+            // Diffuse
+            if diffuse_p > 0.0 {
+                let (res_brdf, res_pdf) = self.eval_diffuse(csheen, v_local, l_local, h_local);
+                brdf += res_brdf * dielectric_wt;
+                pdf += res_pdf * diffuse_p;
+            }
 
-        if dielectric_p > 0.0 && should_reflect {
-            let dieletric_f = (dielectric_fresnel(v_dot_h, self.ior.recip()) - f0) / (1.0 - f0);
-            let dieletric_color = cspec0.lerp(Vec3::ONE, dieletric_f);
-            let (res_brdf, res_pdf) =
-                self.eval_microfacet_reflection(v_local, l_local, h_local, dieletric_color);
-            brdf += res_brdf * dielectric_wt;
-            pdf += res_pdf * dielectric_p;
-        }
-
-        if metal_p > 0.0 && should_reflect {
-            let metal_f = schlick_weight(v_dot_h);
-            let metal_color = self.base_color.lerp(Vec3::ONE, metal_f);
-            let (res_brdf, res_pdf) =
-                self.eval_microfacet_reflection(v_local, l_local, h_local, metal_color);
-            brdf += res_brdf * metal_wt;
-            pdf += res_pdf * metal_p;
+            // Specular
+            if dielectric_p > 0.0 {
+                let dieletric_f = (dielectric_fresnel(v_dot_h, self.ior.recip()) - f0) / (1.0 - f0);
+                let dieletric_color = cspec0.lerp(Vec3::ONE, dieletric_f);
+                let (res_brdf, res_pdf) =
+                    self.eval_microfacet_reflection(v_local, l_local, h_local, dieletric_color);
+                brdf += res_brdf * dielectric_wt;
+                pdf += res_pdf * dielectric_p;
+            }
+            if metal_p > 0.0 {
+                let metal_f = schlick_weight(v_dot_h);
+                let metal_color = self.base_color.lerp(Vec3::ONE, metal_f);
+                let (res_brdf, res_pdf) =
+                    self.eval_microfacet_reflection(v_local, l_local, h_local, metal_color);
+                brdf += res_brdf * metal_wt;
+                pdf += res_pdf * metal_p;
+            }
         }
 
         (brdf * l_local.z.abs(), pdf)
@@ -266,25 +280,21 @@ impl Material for BRDF {
     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
         let eps = 1e-3;
 
-        let view_dir = -ray.direction();
-        let normal = hit_info.normal;
-
-        let v_local = to_local(normal, view_dir);
-        let n_local = to_local(normal, normal);
-
-        let l_local = self.sample(v_local, n_local);
-        let (brdf, pdf) = self.eval(v_local, n_local, l_local);
+        let sampled_dir = self.sample(ray, hit_info);
+        let Some(light_dir) = sampled_dir else {
+            return (Vec3::ONE, None);
+        };
+        let (brdf, pdf) = self.eval(ray, light_dir, hit_info);
 
         let _t1 = brdf / pdf;
         let _t2 = self.base_color;
 
-        let ray_dir = to_world(normal, l_local);
-        let sign = ray_dir.dot(normal).signum();
+        let sign = light_dir.dot(hit_info.normal).signum();
         (
             brdf / pdf,
             Some(Ray::new(
-                hit_info.point + normal * (eps * sign),
-                ray_dir,
+                hit_info.point + hit_info.normal * (eps * sign),
+                light_dir,
                 ray.time(),
             )),
         )
