@@ -313,7 +313,7 @@ fn cornell_box_scene() {
     let diffuse_brdf = MaterialType::BRDFMat(BRDF {
         base_color: Vec3::new(0.12, 0.45, 0.15),
         metallic: 0.001,
-        roughness: 0.001,
+        roughness: 0.801,
         subsurface: 0.0,
         spec_trans: 0.0,
         specular_tint: 0.0,

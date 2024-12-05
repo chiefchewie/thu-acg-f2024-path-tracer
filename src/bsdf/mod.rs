@@ -31,13 +31,13 @@ impl BRDF {
     fn sample(&self, v_local: Vec3, n_local: Vec3) -> Vec3 {
         let _ = n_local;
         let (f0, cspec0, csheen) = self.tint_colors();
-        let (_, _) = (f0, csheen);
+        // let (_, _) = (f0, csheen);
 
         // weights and probabilities
         let dielectric_wt = 1.0 - self.metallic;
         let metal_wt = self.metallic;
 
-        let f = schlick_fresnel(v_local.z);
+        let f = schlick_weight(v_local.z);
 
         let diffuse_p = dielectric_wt * self.base_color.luminance();
         let dielectric_p = dielectric_wt * cspec0.lerp(Vec3::ONE, f).luminance();
@@ -99,7 +99,7 @@ impl BRDF {
         let dielectric_wt = 1.0 - self.metallic;
         let metal_wt = self.metallic;
 
-        let f = schlick_fresnel(v_local.z);
+        let f = schlick_weight(v_local.z);
 
         let diffuse_p = dielectric_wt * self.base_color.luminance();
         let dielectric_p = dielectric_wt * cspec0.lerp(Vec3::ONE, f).luminance();
@@ -114,7 +114,7 @@ impl BRDF {
         let v_dot_h = v_local.dot(h_local).abs();
 
         // Diffuse
-        if diffuse_p > 0.0 && should_reflect {
+        if diffuse_p > 0.0 {
             let (res_brdf, res_pdf) = self.eval_diffuse(csheen, v_local, l_local, h_local);
             brdf += res_brdf * dielectric_wt;
             pdf += res_pdf * diffuse_p;
@@ -130,7 +130,7 @@ impl BRDF {
         }
 
         if metal_p > 0.0 && should_reflect {
-            let metal_f = schlick_fresnel(v_dot_h);
+            let metal_f = schlick_weight(v_dot_h);
             let metal_color = self.base_color.lerp(Vec3::ONE, metal_f);
             let (res_brdf, res_pdf) =
                 self.eval_microfacet_reflection(v_local, l_local, h_local, metal_color);
@@ -175,29 +175,27 @@ impl BRDF {
         l_local: Vec3,
         h_local: Vec3,
     ) -> (Vec3, f64) {
-        if l_local.z <= 0.0 {
-            return (Vec3::ZERO, 0.0);
-        }
-
         let l_dot_h = l_local.dot(h_local);
+
+        // diffuse
+        let fl = schlick_weight(l_local.z);
+        let fv = schlick_weight(v_local.z);
+
         let rr = 2.0 * self.roughness * l_dot_h * l_dot_h;
 
-        let fl = schlick_fresnel(l_local.z);
-        let fv = schlick_fresnel(v_local.z);
+        let f_lambert = 1.0;
         let f_retro = rr * (fl + fv + fl * fv * (rr - 1.0));
-        let fd = (1.0 - 0.5 * fl) * (1.0 - 0.5 * fv);
 
-        let f_ss90 = 0.5 * rr;
-        let f_ss = 1.0.lerp(f_ss90, fl) * 1.0.lerp(f_ss90, fv);
-        let ss = 1.25 * (f_ss * (1.0 / (l_local.z + v_local.z) - 0.5) + 0.5);
+        let subsurface_approx = f_lambert; // TODO thin surfaces???
 
-        let fh = schlick_fresnel(l_dot_h);
-        let f_sheen = fh * self.sheen * csheen;
-
+        // sheen
+        let f_h = schlick_weight(l_dot_h);
+        let sheen = self.sheen * csheen * f_h;
+        
+        let brdf = self.base_color
+            * PI.recip()
+            * (f_retro + subsurface_approx * (1.0 - 0.5 * fl) * (1.0 - 0.5 * fv)) + sheen;
         let pdf = l_local.z * PI.recip();
-        let brdf =
-            PI.recip() * self.base_color * (fd + f_retro).lerp(ss, self.subsurface) + f_sheen;
-
         (brdf, pdf)
     }
 
@@ -212,12 +210,12 @@ impl BRDF {
 
         let f0 = ((1.0 - eta) / (1.0 + eta)).powi(2);
         let cspec0 = f0 * ctint.lerp(Vec3::ONE, self.specular_tint);
-        let csheen = ctint.lerp(Vec3::ONE, self.sheen_tint);
+        let csheen = Vec3::ONE.lerp(ctint, self.sheen_tint);
         (f0, cspec0, csheen)
     }
 }
 
-fn schlick_fresnel(cos_theta: f64) -> f64 {
+fn schlick_weight(cos_theta: f64) -> f64 {
     let m = (1.0 - cos_theta).max(0.0);
     m.powi(5)
 }
