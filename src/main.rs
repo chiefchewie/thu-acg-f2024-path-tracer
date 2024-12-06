@@ -80,7 +80,7 @@ fn balls_scene() {
     camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
 
     camera.init();
-    camera.render(&world, "balls.png");
+    camera.render(&world, "demo/balls.png");
 }
 
 fn earth_scene() {
@@ -129,7 +129,7 @@ fn earth_scene() {
     camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
 
     camera.init();
-    camera.render(&world, "earth.png");
+    camera.render(&world, "demo/earth.png");
 }
 
 fn quads_scene() {
@@ -191,7 +191,7 @@ fn quads_scene() {
     camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
 
     camera.init();
-    camera.render(&world, "quads.png");
+    camera.render(&world, "demo/quads.png");
 }
 
 fn basic_light_scene() {
@@ -253,7 +253,7 @@ fn basic_light_scene() {
     camera.ambient_light = Vec3::new(0.2, 0.2, 0.2);
 
     camera.init();
-    camera.render(&world, "lights.png");
+    camera.render(&world, "demo/lights.png");
 }
 
 fn cornell_box_scene() {
@@ -376,7 +376,7 @@ fn cornell_box_scene() {
     camera.ambient_light = Vec3::ZERO;
 
     camera.init();
-    camera.render(&world, "cornell.png");
+    camera.render(&world, "demo/cornell.png");
 }
 
 fn main() {

@@ -150,23 +150,8 @@ impl PrincipledBSDF {
         let view_dir = -ray.direction();
         let v_local = to_local(info.normal, view_dir);
 
-        let (_, cspec0, _) = self.tint_colors();
-
         // weights and probabilities
         let (diffuse_wt, specular_wt, glass_wt, clearcoat_wt) = self.lobe_weights();
-        // let schlick_wt = schlick_weight(v_local.z);
-
-        // let diffuse_p = diffuse_wt * self.base_color.luminance();
-        // let dielectric_p = diffuse_wt * cspec0.lerp(Vec3::ONE, schlick_wt).luminance(); // diffuse_wt or specular_wt?
-        // let metal_p = specular_wt * self.base_color.lerp(Vec3::ONE, schlick_wt).luminance();
-        // // TODO
-        // let _glass_p = glass_wt;
-        // let _clearcoat_p = clearcoat_wt;
-        // let total = diffuse_p + dielectric_p + metal_p;
-
-        // let diffuse_p = diffuse_p / total;
-        // let dielectric_p = dielectric_p / total;
-        // let metal_p = metal_p / total;
         let (diffuse_p, specular_p, glass_p, clearcoat_p) =
             self.lobe_probabilities(diffuse_wt, specular_wt, glass_wt, clearcoat_wt);
 
@@ -242,9 +227,15 @@ impl PrincipledBSDF {
             return (Vec3::ZERO, 0.0);
         }
 
-        // TODO lerp between dieletric fresnel and metal fresnel
-        let schlick_wt = schlick_weight(v_local.dot(h_local));
-        let fresnel: Vec3 = Vec3::ONE.lerp(self.base_color, schlick_wt);
+        let (f0, cspec0, _) = self.tint_colors();
+
+        // I'm not quite sure this is the right way to get the right fresnel
+        // but this looks okay
+        let schlick_wt = schlick_weight(v_local.dot(h_local).abs());
+        let metal_fresnel = Vec3::ONE.lerp(self.base_color, schlick_wt);
+        let dieletric_f = (dielectric_fresnel(v_local.dot(h_local).abs(), self.ior.recip()) - f0) / (1.0 - f0);
+        let dieletric_fresnel = cspec0.lerp(Vec3::ONE, dieletric_f);
+        let fresnel = dieletric_fresnel.lerp(metal_fresnel, self.metallic);
 
         let aspect = (1.0 - self.anisotropic * 0.9).sqrt();
         let ax = (self.roughness.powi(2) / aspect).max(0.001);
@@ -305,7 +296,7 @@ impl PrincipledBSDF {
 
         let f0 = ((1.0 - eta) / (1.0 + eta)).powi(2);
         let cspec0 = f0 * ctint.lerp(Vec3::ONE, self.specular_tint);
-        let csheen = Vec3::ONE.lerp(ctint, self.sheen_tint);
+        let csheen = Vec3::ONE.lerp(ctint, self.specular_tint);
         (f0, cspec0, csheen)
     }
 }
