@@ -1,7 +1,7 @@
 use std::env;
 use std::sync::Arc;
 
-use path_tracer::bsdf::BRDF;
+use path_tracer::bsdf::PrincipledBSDF;
 use path_tracer::{
     camera::Camera,
     hittable::{Cuboid, Instance, Quad, Sphere, World},
@@ -300,7 +300,7 @@ fn cornell_box_scene() {
         white.clone(),
     ));
 
-    let diffuse_brdf = MaterialType::BRDFMat(BRDF {
+    let diffuse_brdf = MaterialType::BRDFMat(PrincipledBSDF {
         base_color: Vec3::new(0.12, 0.45, 0.15),
         metallic: 0.001,
         roughness: 0.801,
@@ -314,7 +314,7 @@ fn cornell_box_scene() {
         ior: 1.5,
         anisotropic: 0.0,
     });
-    let specular_brdf = MaterialType::BRDFMat(BRDF {
+    let specular_brdf = MaterialType::BRDFMat(PrincipledBSDF {
         base_color: Vec3::new(0.8, 0.85, 0.88),
         metallic: 0.999,
         roughness: 0.2001,

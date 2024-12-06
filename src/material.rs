@@ -3,7 +3,7 @@ use std::{f64::consts::PI, sync::Arc};
 use rand::{thread_rng, Rng};
 
 use crate::{
-    bsdf::BRDF,
+    bsdf::PrincipledBSDF,
     hittable::hit_info::HitInfo,
     ray::Ray,
     texture::{SolidColorTexture, Texture},
@@ -213,7 +213,7 @@ pub enum MaterialType {
     REFRACTIVE(Refractive),
     LIGHT(DiffuseLight),
     MIX(MixMaterial),
-    BRDFMat(BRDF),
+    BRDFMat(PrincipledBSDF),
 }
 
 impl Default for MaterialType {
