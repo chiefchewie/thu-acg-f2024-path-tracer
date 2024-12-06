@@ -22,6 +22,8 @@ https://schuttejoe.github.io/post/disneybsdf/
 https://cseweb.ucsd.edu/~tzli/cse272/wi2023/homework1.pdf 
 https://blog.selfshadow.com/publications/s2012-shading-course/burley/s2012_pbs_disney_brdf_notes_v3.pdf 
 https://blog.selfshadow.com/publications/s2015-shading-course/burley/s2015_pbs_disney_bsdf_notes.pdf 
+
+I originally used this blog's implementation but have since moved on because I found it hard to make it work within my framework. I may come back to it for some of the optimized sampling procedures.
 https://boksajak.github.io/blog/BRDF 
 
 This link has an implementation, which I'm currently following for the overall layout. However, I plan to change it because there are some things that I don't like about it, such as how they are determining the lobe probabilities, some of the conditions for evaluating each lobe, and I think the sampling procedures can be optimized which I'd like to do. I'd like to acknowledge that my final implementation might still end up similar to this, since we're both implementing the same thing (Disney BRDF) at the end of the day.
