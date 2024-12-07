@@ -1,6 +1,8 @@
 use std::env;
 use std::sync::Arc;
 
+use path_tracer::bsdf::diffuse::DiffuseBRDF;
+use path_tracer::bsdf::metal::MetalBRDF;
 use path_tracer::bsdf::PrincipledBSDF;
 use path_tracer::{
     camera::Camera,
@@ -303,7 +305,7 @@ fn cornell_box_scene() {
     let diffuse_brdf = MaterialType::BRDFMat(PrincipledBSDF {
         base_color: Vec3::new(0.12, 0.45, 0.15),
         metallic: 0.001,
-        roughness: 0.801,
+        roughness: 0.001,
         subsurface: 0.0,
         spec_trans: 0.0,
         specular_tint: 0.0,
@@ -314,10 +316,12 @@ fn cornell_box_scene() {
         ior: 1.5,
         anisotropic: 0.0,
     });
+    let test_brdf = MaterialType::TEST(MetalBRDF::rgb(Vec3::ONE));
+
     let specular_brdf = MaterialType::BRDFMat(PrincipledBSDF {
         base_color: Vec3::new(0.8, 0.85, 0.88),
         metallic: 0.999,
-        roughness: 0.2001,
+        roughness: 0.0001,
         subsurface: 0.0,
         spec_trans: 0.0,
         specular_tint: 0.0,
@@ -325,20 +329,34 @@ fn cornell_box_scene() {
         sheen_tint: 0.0,
         clearcoat: 0.0,
         clearcoat_roughness: 0.0,
+        ior: 1.5,
+        anisotropic: 0.0,
+    });
+    let refract_brdf = MaterialType::BRDFMat(PrincipledBSDF {
+        base_color: Vec3::ONE,
+        metallic: 0.001,
+        roughness: 0.001,
+        subsurface: 0.001,
+        spec_trans: 0.999,
+        specular_tint: 0.001,
+        sheen: 0.001,
+        sheen_tint: 0.001,
+        clearcoat: 0.001,
+        clearcoat_roughness: 0.001,
         ior: 1.5,
         anisotropic: 0.0,
     });
 
-    let mat1 = MaterialType::REFRACTIVE(Refractive::new(1.5));
+    let mat1 = MaterialType::SPECULAR(Specular::from_rgb(Vec3::ONE, 0.0));
     world.add(Sphere::new_still(
         105.0,
         Vec3::new(413.0, 170.0, 372.0),
-        diffuse_brdf,
+        mat1,
     ));
     world.add(Sphere::new_still(
         135.0,
         Vec3::new(113.0, 170.0, 372.0),
-        specular_brdf,
+        test_brdf,
     ));
 
     // let box1 = Arc::new(Cuboid::new(

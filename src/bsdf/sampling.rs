@@ -2,7 +2,8 @@ use super::PrincipledBSDF;
 use std::f64::consts::PI;
 
 use glam::FloatExt;
-use rand::{distributions, thread_rng, Rng};
+// use rand::distributions;
+use rand::{thread_rng, Rng};
 
 use crate::{
     hittable::HitInfo,
@@ -11,31 +12,17 @@ use crate::{
 };
 
 // transformations
-fn to_local(normal: Vec3, input_world: Vec3) -> Vec3 {
+pub fn to_local(normal: Vec3, input_world: Vec3) -> Vec3 {
     let rot = get_rotation_to_z(normal);
     rot * input_world
 }
 
-fn to_world(normal: Vec3, input_local: Vec3) -> Vec3 {
+pub fn to_world(normal: Vec3, input_local: Vec3) -> Vec3 {
     let rot = get_rotation_to_z(normal).inverse();
     rot * input_local
 }
 
 // sampling functions
-fn gtr2_aniso(n_dot_h: f64, h_dot_x: f64, h_dot_y: f64, ax: f64, ay: f64) -> f64 {
-    let a = h_dot_x / ax;
-    let b = h_dot_y / ay;
-    let c = a * a + b * b + n_dot_h * n_dot_h;
-    (PI * ax * ay * c * c).recip()
-}
-
-fn smith_g_aniso(n_dot_v: f64, v_dot_x: f64, v_dot_y: f64, ax: f64, ay: f64) -> f64 {
-    let a = v_dot_x * ax;
-    let b = v_dot_y * ay;
-    let c = n_dot_v;
-    (2.0 * n_dot_v) / (n_dot_v + (a * a + b * b + c * c).sqrt())
-}
-
 fn sample_ggx_vndf(v_local: Vec3, ax: f64, ay: f64) -> Vec3 {
     let mut rng = thread_rng();
 
@@ -106,7 +93,7 @@ fn sample_diffuse_next_dir(info: &HitInfo) -> Option<Vec3> {
     Some(to_world(info.normal, diffuse_dir_local))
 }
 
-fn sample_microfacet_next_dir(v_local: Vec3, mat: &PrincipledBSDF, info: &HitInfo) -> Option<Vec3> {
+fn sample_specular_next_dir(v_local: Vec3, mat: &PrincipledBSDF, info: &HitInfo) -> Option<Vec3> {
     let h_local = sample_microfacet_normal(mat.anisotropic, mat.roughness, v_local);
     let specular_dir_local = (-v_local).reflect(h_local);
     let specular_dir = to_world(info.normal, specular_dir_local);
@@ -117,14 +104,42 @@ fn sample_microfacet_next_dir(v_local: Vec3, mat: &PrincipledBSDF, info: &HitInf
     }
 }
 
+fn sample_transmissive_next_dir(
+    v_local: Vec3,
+    mat: &PrincipledBSDF,
+    info: &HitInfo,
+) -> Option<Vec3> {
+    let h_local = sample_microfacet_normal(mat.anisotropic, mat.roughness, v_local);
+    let ri = if info.front_face {
+        1.0 / mat.ior
+    } else {
+        mat.ior
+    };
+
+    let cos_theta = v_local.dot(h_local).abs().min(1.0);
+    let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+
+    let r0 = ((1.0 - ri) / (1.0 + ri)).powi(2);
+    let reflectance = r0 + (1.0 - r0) * (1.0 - cos_theta).powi(5);
+
+    let cannot_refract = ri * sin_theta > 1.0;
+
+    let rand_choice: f64 = rand::random();
+    let dir_local = if cannot_refract || reflectance > rand_choice {
+        (-v_local).reflect(h_local)
+    } else {
+        (-v_local).refract(h_local, ri)
+    };
+    Some(to_world(info.normal, dir_local))
+}
+
 impl PrincipledBSDF {
     fn lobe_weights(&self) -> (f64, f64, f64, f64) {
         let diffuse_wt = (1.0 - self.metallic) * (1.0 - self.spec_trans);
         let specular_wt = 1.0 - self.spec_trans * (1.0 - self.metallic);
         // TODO
-        // let glass_wt = self.spec_trans * (1.0 - self.metallic);
+        let glass_wt = self.spec_trans * (1.0 - self.metallic);
         // let clearcoat_wt = 0.25 * self.clearcoat;
-        let glass_wt = 0.0;
         let clearcoat_wt = 0.0;
         (diffuse_wt, specular_wt, glass_wt, clearcoat_wt)
     }
@@ -152,20 +167,24 @@ impl PrincipledBSDF {
 
         // weights and probabilities
         let (diffuse_wt, specular_wt, glass_wt, clearcoat_wt) = self.lobe_weights();
-        let (diffuse_p, specular_p, glass_p, clearcoat_p) =
+        let (diffuse_p, specular_p, glass_p, _clearcoat_p) =
             self.lobe_probabilities(diffuse_wt, specular_wt, glass_wt, clearcoat_wt);
 
         let rand_choice: f64 = rand::random();
         if rand_choice < diffuse_p {
             sample_diffuse_next_dir(info)
         } else if rand_choice < diffuse_p + specular_p {
-            sample_microfacet_next_dir(v_local, self, info)
+            sample_specular_next_dir(v_local, self, info)
+        } else if rand_choice < diffuse_p + specular_p + glass_p {
+            sample_transmissive_next_dir(v_local, self, info)
         } else {
-            None // TODO clearcoat and transmissive
+            None // TODO clearcoat
         }
     }
 
     pub(super) fn eval(&self, ray: &Ray, light_dir: Vec3, info: &HitInfo) -> (Vec3, f64) {
+        // return (Vec3::ONE, 1.0);
+
         let view_dir = -ray.direction();
         let v_local = to_local(info.normal, view_dir);
         let l_local = to_local(info.normal, light_dir);
@@ -173,11 +192,17 @@ impl PrincipledBSDF {
         let mut pdf = 0.0;
         let mut brdf = Vec3::ZERO;
 
+        let ri = if info.front_face {
+            1.0 / self.ior
+        } else {
+            self.ior
+        };
+
         let h_local = {
             let h = if l_local.z > 0.0 {
                 (v_local + l_local).normalize()
             } else {
-                (v_local + l_local * self.ior).normalize()
+                (v_local + l_local * ri).normalize()
             };
             if h.z < 0.0 {
                 -h
@@ -186,35 +211,70 @@ impl PrincipledBSDF {
             }
         };
 
-        // tint
-        let (f0, cspec0, csheen) = self.tint_colors();
-
         // weights and probabilities
         let (diffuse_wt, specular_wt, glass_wt, clearcoat_wt) = self.lobe_weights();
         let (diffuse_p, specular_p, glass_p, clearcoat_p) =
             self.lobe_probabilities(diffuse_wt, specular_wt, glass_wt, clearcoat_wt);
 
-        let should_reflect = l_local.z * v_local.z > 0.0;
-        let v_dot_h = v_local.dot(h_local).abs();
+        let should_reflect = l_local.z > 0.0 && v_local.z > 0.0;
 
-        if should_reflect {
-            // Diffuse
-            if diffuse_p > 0.0 {
-                let (res_brdf, res_pdf) = self.eval_diffuse(csheen, v_local, l_local, h_local);
-                brdf += diffuse_wt * res_brdf;
-                pdf += diffuse_p * res_pdf;
-            }
+        // Diffuse
+        if diffuse_p > 0.0 && should_reflect {
+            let (res_brdf, res_pdf) = self.eval_diffuse(v_local, l_local, h_local);
+            brdf += diffuse_wt * res_brdf;
+            pdf += diffuse_p * res_pdf;
+        }
 
-            // Specular
-            if specular_p > 0.0 {
-                let (res_brdf, res_pdf) =
-                    self.eval_microfacet_reflection(v_local, l_local, h_local);
-                brdf += specular_wt * res_brdf;
-                pdf += specular_p * res_pdf;
-            }
+        // Specular
+        if specular_p > 0.0 && should_reflect {
+            let (res_brdf, res_pdf) = self.eval_microfacet_reflection(v_local, l_local, h_local);
+            brdf += specular_wt * res_brdf;
+            pdf += specular_p * res_pdf;
+        }
+
+        // Glass
+        if glass_p > 0.0 {
+            let (res_brdf, res_pdf) = if should_reflect {
+                self.eval_microfacet_reflection(v_local, l_local, h_local)
+            } else {
+                self.eval_microfacet_refraction(ri, v_local, h_local, l_local)
+            };
+            brdf += glass_wt * res_brdf;
+            pdf += glass_p * res_pdf;
+        }
+
+        if clearcoat_p > 0.0 && should_reflect {
+            // TODO
         }
 
         (brdf * l_local.z.abs(), pdf)
+    }
+
+    fn eval_diffuse(&self, v_local: Vec3, l_local: Vec3, h_local: Vec3) -> (Vec3, f64) {
+        let (_, _, csheen) = self.tint_colors();
+        let l_dot_h = l_local.dot(h_local);
+
+        // diffuse
+        let fl = schlick_weight(l_local.z.abs());
+        let fv = schlick_weight(v_local.z.abs());
+
+        let rr = 2.0 * self.roughness * l_dot_h * l_dot_h;
+
+        let f_lambert = 1.0;
+        let f_retro = rr * (fl + fv + fl * fv * (rr - 1.0));
+
+        let subsurface_approx = f_lambert; // TODO thin surfaces???
+
+        // sheen
+        let f_h = schlick_weight(l_dot_h);
+        let sheen = self.sheen * csheen * f_h;
+
+        let brdf = self.base_color
+            * PI.recip()
+            * (f_retro + subsurface_approx * (1.0 - 0.5 * fl) * (1.0 - 0.5 * fv))
+            + sheen;
+        let pdf = l_local.z * PI.recip();
+        (brdf, pdf)
     }
 
     fn eval_microfacet_reflection(
@@ -233,55 +293,68 @@ impl PrincipledBSDF {
         // but this looks okay
         let schlick_wt = schlick_weight(v_local.dot(h_local).abs());
         let metal_fresnel = Vec3::ONE.lerp(self.base_color, schlick_wt);
-        let dieletric_f = (dielectric_fresnel(v_local.dot(h_local).abs(), self.ior.recip()) - f0) / (1.0 - f0);
+        let dieletric_f =
+            (dielectric_fresnel(v_local.dot(h_local).abs(), self.ior.recip()) - f0) / (1.0 - f0);
         let dieletric_fresnel = cspec0.lerp(Vec3::ONE, dieletric_f);
         let fresnel = dieletric_fresnel.lerp(metal_fresnel, self.metallic);
 
-        let aspect = (1.0 - self.anisotropic * 0.9).sqrt();
-        let ax = (self.roughness.powi(2) / aspect).max(0.001);
-        let ay = (self.roughness.powi(2) * aspect).max(0.001);
+        // let aspect = (1.0 - self.anisotropic * 0.9).sqrt();
+        // let ax = (self.roughness.powi(2) / aspect).max(0.001);
+        // let ay = (self.roughness.powi(2) * aspect).max(0.001);
+
+        let alpha = self.roughness;
+        let a2 = alpha * alpha;
 
         // distribution of half-normals
-        let d = gtr2_aniso(h_local.z, h_local.x, h_local.y, ax, ay);
+        let t = h_local.z * (a2 - 1.0) + 1.0;
+        let d = a2 / (PI * t * t);
 
         // maksing/geometric factor
-        let g1 = smith_g_aniso(v_local.z.abs(), v_local.x, v_local.y, ax, ay);
-        let g2 = g1 * smith_g_aniso(l_local.z.abs(), l_local.x, l_local.y, ax, ay);
+        let gv = v_local.z * (a2 + (1.0 - a2) * l_local.z.powi(2)).sqrt();
+        let gl = l_local.z * (a2 + (1.0 - a2) * v_local.z.powi(2)).sqrt();
+        let g2 = 2.0 * (l_local.z) * (v_local.z) / (gv + gl);
 
-        let pdf = g1 * d / (4.0 * v_local.z);
-        let brdf = fresnel * d * g2 / (4.0 * l_local.z * v_local.z);
+        let brdf = fresnel * d * g2 / (4.0 * l_local.z.abs() * v_local.z.abs());
+        let pdf = d * h_local.z / (4.0 * v_local.dot(h_local).abs());
+
         (brdf, pdf)
     }
 
-    fn eval_diffuse(
+    fn eval_microfacet_refraction(
         &self,
-        csheen: Vec3,
+        ri: f64,
         v_local: Vec3,
-        l_local: Vec3,
         h_local: Vec3,
+        l_local: Vec3,
     ) -> (Vec3, f64) {
-        let l_dot_h = l_local.dot(h_local);
+        return (Vec3::ONE, 1.0);
 
-        // diffuse
-        let fl = schlick_weight(l_local.z);
-        let fv = schlick_weight(v_local.z);
+        let ri2 = ri * ri;
+        let n_dot_l = l_local.z.abs();
+        let n_dot_v = v_local.z.abs();
 
-        let rr = 2.0 * self.roughness * l_dot_h * l_dot_h;
+        let h_dot_l = h_local.dot(l_local).max(0.0);
+        let h_dot_v = h_local.dot(v_local).max(0.0);
 
-        let f_lambert = 1.0;
-        let f_retro = rr * (fl + fv + fl * fv * (rr - 1.0));
+        let alpha = self.roughness;
+        let a2 = alpha * alpha;
 
-        let subsurface_approx = f_lambert; // TODO thin surfaces???
+        // distribution of half-normals
+        let t = h_local.z * (a2 - 1.0) + 1.0;
+        let d = a2 / (PI * t * t);
 
-        // sheen
-        let f_h = schlick_weight(l_dot_h);
-        let sheen = self.sheen * csheen * f_h;
+        // maksing/geometric factor
+        let gv = v_local.z * (a2 + (1.0 - a2) * l_local.z.powi(2)).sqrt();
+        let gl = l_local.z * (a2 + (1.0 - a2) * v_local.z.powi(2)).sqrt();
+        let g2 = 2.0 * (l_local.z) * (v_local.z) / (gv + gl);
 
-        let brdf = self.base_color
-            * PI.recip()
-            * (f_retro + subsurface_approx * (1.0 - 0.5 * fl) * (1.0 - 0.5 * fv))
-            + sheen;
-        let pdf = l_local.z * PI.recip();
+        let denom = h_dot_l + h_dot_v * ri;
+        let jacobian = h_dot_l / (denom * denom);
+
+        let f = dielectric_fresnel(h_dot_v, ri);
+        let brdf =
+            self.base_color * h_dot_v * ri2 * (1.0 - f) * g2 * d * jacobian / (n_dot_l * n_dot_v);
+        let pdf = gv * h_dot_v * d * jacobian / v_local.z;
         (brdf, pdf)
     }
 

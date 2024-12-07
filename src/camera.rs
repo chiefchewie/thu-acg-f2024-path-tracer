@@ -203,7 +203,8 @@ impl Camera {
                 MaterialType::MIX(ref mix_material) => {
                     mix_material.emitted(hit_info.u, hit_info.v, hit_info.point)
                 }
-                MaterialType::BRDFMat(ref _brdf) => Vec3::ZERO, // TODO
+                MaterialType::BRDFMat(ref _brdf) => Vec3::ZERO,
+                MaterialType::TEST(_) => Vec3::ZERO,
             };
             radiance += emission * throughput;
 
@@ -225,6 +226,7 @@ impl Camera {
                 MaterialType::LIGHT(ref diffuse_light) => diffuse_light.scatter(&ray, &hit_info),
                 MaterialType::MIX(ref mix_material) => mix_material.scatter(&ray, &hit_info),
                 MaterialType::BRDFMat(ref brdf) => brdf.scatter(&ray, &hit_info),
+                MaterialType::TEST(ref diffuse_brdf) => diffuse_brdf.scatter(&ray, &hit_info),
             };
             if let Some(scatter_ray) = next_ray {
                 throughput *= attenuation;

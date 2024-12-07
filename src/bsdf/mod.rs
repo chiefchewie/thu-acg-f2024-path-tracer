@@ -1,6 +1,20 @@
 use crate::{hittable::HitInfo, material::Material, ray::Ray, vec3::Vec3};
 
+pub mod diffuse;
+pub mod metal;
 mod sampling;
+
+// TODO: consider merging two of these to be faster
+pub trait BxDF: Material {
+    /// Given the outgoing (view) ray and hit info, sample an incident (light) ray
+    fn sample(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3>;
+
+    /// Given an outgoing and incoming ray and hit info, compute the pdf of this incoming (light) ray
+    fn pdf(&self, view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> f64;
+
+    /// Given an outgoing and incoming ray and hit info, compute the reflectance
+    fn eval(&self, view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> Vec3;
+}
 
 #[derive(Clone)]
 pub struct PrincipledBSDF {
