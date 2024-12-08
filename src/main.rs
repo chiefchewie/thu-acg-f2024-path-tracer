@@ -1,12 +1,11 @@
 use std::env;
 use std::sync::Arc;
 
-use path_tracer::bsdf::diffuse::DiffuseBRDF;
+use path_tracer::bsdf::glass::GlassBSDF;
 use path_tracer::bsdf::metal::MetalBRDF;
-use path_tracer::bsdf::PrincipledBSDF;
 use path_tracer::{
     camera::Camera,
-    hittable::{Cuboid, Instance, Quad, Sphere, World},
+    hittable::{Quad, Sphere, World},
     light::PointLight,
     material::{Diffuse, DiffuseLight, MaterialType, MixMaterial, Refractive, Specular},
     texture::{CheckerTexture, ImageTexture},
@@ -302,61 +301,15 @@ fn cornell_box_scene() {
         white.clone(),
     ));
 
-    let diffuse_brdf = MaterialType::BRDFMat(PrincipledBSDF {
-        base_color: Vec3::new(0.12, 0.45, 0.15),
-        metallic: 0.001,
-        roughness: 0.001,
-        subsurface: 0.0,
-        spec_trans: 0.0,
-        specular_tint: 0.0,
-        sheen: 0.0,
-        sheen_tint: 0.0,
-        clearcoat: 0.0,
-        clearcoat_roughness: 0.0,
-        ior: 1.5,
-        anisotropic: 0.0,
-    });
-    let test_brdf = MaterialType::TEST(MetalBRDF::rgb(Vec3::ONE));
-
-    let specular_brdf = MaterialType::BRDFMat(PrincipledBSDF {
-        base_color: Vec3::new(0.8, 0.85, 0.88),
-        metallic: 0.999,
-        roughness: 0.0001,
-        subsurface: 0.0,
-        spec_trans: 0.0,
-        specular_tint: 0.0,
-        sheen: 0.0,
-        sheen_tint: 0.0,
-        clearcoat: 0.0,
-        clearcoat_roughness: 0.0,
-        ior: 1.5,
-        anisotropic: 0.0,
-    });
-    let refract_brdf = MaterialType::BRDFMat(PrincipledBSDF {
-        base_color: Vec3::ONE,
-        metallic: 0.001,
-        roughness: 0.001,
-        subsurface: 0.001,
-        spec_trans: 0.999,
-        specular_tint: 0.001,
-        sheen: 0.001,
-        sheen_tint: 0.001,
-        clearcoat: 0.001,
-        clearcoat_roughness: 0.001,
-        ior: 1.5,
-        anisotropic: 0.0,
-    });
-
-    let mat1 = MaterialType::SPECULAR(Specular::from_rgb(Vec3::ONE, 0.0));
     world.add(Sphere::new_still(
         105.0,
         Vec3::new(413.0, 170.0, 372.0),
-        mat1,
+        MaterialType::TEST(GlassBSDF::new(0.01, 1.5)),
     ));
     world.add(Sphere::new_still(
         135.0,
         Vec3::new(113.0, 170.0, 372.0),
-        test_brdf,
+        MaterialType::SPECULAR(Specular::from_rgb(Vec3::ONE, 0.0)),
     ));
 
     // let box1 = Arc::new(Cuboid::new(
@@ -397,16 +350,70 @@ fn cornell_box_scene() {
     camera.render(&world, "demo/cornell.png");
 }
 
+fn test_scene() {
+    let mut world = World::new();
+    let material_ground = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.8, 0.8, 0.0)));
+    let material_center = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.1, 0.2, 0.5)));
+    // let material_left = MaterialType::TEST(MetalBRDF::new(Vec3::new(0.8, 0.1, 0.2), 0.3));   
+    let material_left = MaterialType::TEST(GlassBSDF::new(0.1, 1.5));
+    // let material_left = MaterialType::REFRACTIVE(Refractive::new(1.5));
+    let material_right = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.8, 0.1, 0.2), 0.3));
+
+    world.add(Sphere::new_still(
+        100.0,
+        Vec3::new(0.0, -100.5, -1.0),
+        material_ground,
+    ));
+    world.add(Sphere::new_still(
+        0.5,
+        Vec3::new(0.0, 0.0, -1.2),
+        material_center,
+    ));
+    world.add(Sphere::new_still(
+        0.5,
+        Vec3::new(-1.0, 0.0, -1.0),
+        material_left,
+    ));
+    world.add(Sphere::new_still(
+        0.5,
+        Vec3::new(1.0, 0.0, -1.0),
+        material_right,
+    ));
+
+    world.build_bvh();
+
+    let mut camera = Camera::new();
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 900;
+    camera.samples_per_pixel = 100;
+    camera.max_depth = 20;
+
+    camera.vfov = 90.0;
+    camera.look_from = Vec3::ZERO;
+    camera.look_at = -Vec3::Z;
+    camera.vup = Vec3::Y;
+
+    camera.blur_strength = 0.5;
+    camera.focal_length = 10.0;
+    camera.defocus_angle = 0.0;
+
+    camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
+
+    camera.init();
+    camera.render(&world, "demo/test.png");
+}
+
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
 
-    let x = 5;
+    let x = 6;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),
         3 => quads_scene(),
         4 => basic_light_scene(),
         5 => cornell_box_scene(),
+        6 => test_scene(),
         _ => (),
     }
 }

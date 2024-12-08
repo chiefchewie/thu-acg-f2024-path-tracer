@@ -1,8 +1,9 @@
 use crate::{hittable::HitInfo, material::Material, ray::Ray, vec3::Vec3};
 
 pub mod diffuse;
+pub mod glass;
 pub mod metal;
-mod sampling;
+pub mod sampling;
 
 // TODO: consider merging two of these to be faster
 pub trait BxDF: Material {
@@ -30,29 +31,4 @@ pub struct PrincipledBSDF {
     pub clearcoat_roughness: f64,
     pub ior: f64,
     pub anisotropic: f64,
-}
-
-impl Material for PrincipledBSDF {
-    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
-        let eps = 1e-3;
-
-        let sampled_dir = self.sample(ray, hit_info);
-        let Some(light_dir) = sampled_dir else {
-            return (Vec3::ONE, None);
-        };
-        let (brdf, pdf) = self.eval(ray, light_dir, hit_info);
-
-        let _t1 = brdf / pdf;
-        let _t2 = self.base_color;
-
-        let sign = light_dir.dot(hit_info.normal).signum();
-        (
-            brdf / pdf,
-            Some(Ray::new(
-                hit_info.point + hit_info.normal * (eps * sign),
-                light_dir,
-                ray.time(),
-            )),
-        )
-    }
 }

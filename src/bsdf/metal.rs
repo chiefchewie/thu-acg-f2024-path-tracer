@@ -17,11 +17,30 @@ pub struct MetalBRDF {
 }
 
 impl MetalBRDF {
-    pub fn rgb(rgb: Vec3) -> Self {
+    pub fn new(base_color: Vec3, roughness: f64) -> Self {
         Self {
-            base_color: rgb,
-            roughness: 0.0001,
+            base_color,
+            roughness
         }
+    }
+
+    fn D(&self, h: Vec3) -> f64 {
+        let cos_theta = h.z.max(0.001);
+        let alpha2 = (self.roughness * self.roughness).max(0.001);
+        let denom = (alpha2 - 1.0) * (cos_theta * cos_theta) + 1.0;
+        alpha2 / (PI * denom * denom)
+    }
+
+    fn G(&self, v: Vec3, l: Vec3, h: Vec3) -> f64 {
+        let g1v = self.G1(v, h);
+        let g1l = self.G1(l, h);
+        g1v * g1l
+    }
+
+    fn G1(&self, w: Vec3, h: Vec3) -> f64 {
+        let alpha2 = (self.roughness * self.roughness).max(0.001);
+        let cos_theta = w.z.abs();
+        2.0 * cos_theta / (cos_theta + (cos_theta * cos_theta * (1.0 - alpha2) + alpha2).sqrt())
     }
 }
 
@@ -41,52 +60,55 @@ impl BxDF for MetalBRDF {
     }
 
     fn pdf(&self, view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> f64 {
-        let a2 = self.roughness * self.roughness;
-
         let v = to_local(info.normal, view_dir);
         let l = to_local(info.normal, light_dir);
         let h = (v + l).normalize();
 
         // D term
-        let t = h.z * h.z * (a2 - 1.0) + 1.0;
-        let d = a2 / (PI * t * t);
+        let d = self.D(h);
         d * (h.z) / (4.0 * v.dot(h).abs())
     }
 
     fn eval(&self, view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> Vec3 {
-        let a2 = self.roughness * self.roughness;
-
         let v = to_local(info.normal, view_dir);
         let l = to_local(info.normal, light_dir);
         let h = (v + l).normalize();
 
         // D term
-        let t = h.z * h.z * (a2 - 1.0) + 1.0;
-        let d = a2 / (PI * t * t);
+        let d = self.D(h);
 
         // G term
-        let g1_v = (2.0 * v.z) / (v.z + (a2 + (1.0 - a2) * v.z * v.z).sqrt());
-        let g1_l = (2.0 * l.z) / (l.z + (a2 + (1.0 - a2) * l.z * l.z).sqrt());
-        let g = g1_v * g1_l;
+        let g = self.G(v, l, h);
 
         // F term
         let f = schlick_fresnel(self.base_color, l.dot(h));
-        l.z.abs() * f * g * d / (4.0 * l.z.abs() * v.z.abs())
+        l.z.abs() * (f * g * d / (4.0 * l.z.abs() * v.z.abs()))
     }
 }
 
 impl Material for MetalBRDF {
     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
+        // but here's a more optimized version
         let Some(dir) = self.sample(ray, hit_info) else {
             return (self.base_color, None);
         };
 
-        let pdf = self.pdf(-ray.direction(), dir, hit_info);
-        let brdf = self.eval(-ray.direction(), dir, hit_info);
+        // default impl
+        // let pdf = self.pdf(-ray.direction(), dir, hit_info);
+        // let brdf = self.eval(-ray.direction(), dir, hit_info);
+        // let brdf_weight = brdf / pdf;
+
+        // simplified faster impl
+        let v = to_local(hit_info.normal, -ray.direction());
+        let l = to_local(hit_info.normal, dir);
+        let h = (v + l).normalize();
+        let g = self.G(v, l, h);
+        // the simplified result of brdf / pdf
+        let brdf_weight = self.base_color * v.dot(h).abs() * g / (v.z.abs() * h.z.abs());
 
         let eps = 1e-3;
         let next_ray = Ray::new(hit_info.point + hit_info.normal * eps, dir, ray.time());
-        (brdf / pdf, Some(next_ray))
+        (brdf_weight, Some(next_ray))
     }
 }
 

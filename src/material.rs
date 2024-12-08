@@ -3,7 +3,7 @@ use std::{f64::consts::PI, sync::Arc};
 use rand::{thread_rng, Rng};
 
 use crate::{
-    bsdf::{diffuse::DiffuseBRDF, metal::MetalBRDF, PrincipledBSDF},
+    bsdf::{glass::GlassBSDF, metal::MetalBRDF},
     hittable::hit_info::HitInfo,
     ray::Ray,
     texture::{SolidColorTexture, Texture},
@@ -208,13 +208,12 @@ impl Material for MixMaterial {
 
 #[derive(Clone)]
 pub enum MaterialType {
-    TEST(MetalBRDF),
+    TEST(GlassBSDF),
     DIFFUSE(Diffuse),
     SPECULAR(Specular),
     REFRACTIVE(Refractive),
     LIGHT(DiffuseLight),
     MIX(MixMaterial),
-    BRDFMat(PrincipledBSDF),
 }
 
 impl Default for MaterialType {
