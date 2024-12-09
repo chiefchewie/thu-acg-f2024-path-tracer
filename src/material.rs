@@ -3,7 +3,7 @@ use std::{f64::consts::PI, sync::Arc};
 use rand::{thread_rng, Rng};
 
 use crate::{
-    bsdf::{glass::GlassBSDF, metal::MetalBRDF},
+    bsdf::{clearcoat::ClearcoatBRDF, glass::GlassBSDF, metal::MetalBRDF, sheen::SheenBRDF},
     hittable::hit_info::HitInfo,
     ray::Ray,
     texture::{SolidColorTexture, Texture},
@@ -121,7 +121,6 @@ impl Refractive {
 impl Material for Refractive {
     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
         let mut rng = rand::thread_rng();
-        let eps = 1e-3;
         let attenuation = Vec3::ONE;
         let ri = if hit_info.front_face {
             1.0 / self.refraction_index
@@ -143,7 +142,7 @@ impl Material for Refractive {
         };
 
         let ray = Ray::new(
-            hit_info.point + hit_info.normal * (sign * eps),
+            hit_info.point + hit_info.normal * (sign * EPS),
             dir,
             ray.time(),
         );
@@ -208,7 +207,7 @@ impl Material for MixMaterial {
 
 #[derive(Clone)]
 pub enum MaterialType {
-    TEST(GlassBSDF),
+    TEST(SheenBRDF),
     DIFFUSE(Diffuse),
     SPECULAR(Specular),
     REFRACTIVE(Refractive),

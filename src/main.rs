@@ -1,8 +1,10 @@
 use std::env;
 use std::sync::Arc;
 
+use path_tracer::bsdf::clearcoat::ClearcoatBRDF;
 use path_tracer::bsdf::glass::GlassBSDF;
 use path_tracer::bsdf::metal::MetalBRDF;
+use path_tracer::bsdf::sheen::SheenBRDF;
 use path_tracer::{
     camera::Camera,
     hittable::{Quad, Sphere, World},
@@ -362,7 +364,9 @@ fn test_scene() {
     let material_ground = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.8, 0.8, 0.0)));
     let material_center = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.1, 0.2, 0.5)));
     // let material_left = MaterialType::TEST(MetalBRDF::new(Vec3::new(0.8, 0.1, 0.2), 0.3));
-    let material_left = MaterialType::TEST(GlassBSDF::new(0.1, 1.5));
+    // let material_left = MaterialType::TEST(GlassBSDF::new(0.1, 1.5));
+    // let material_left = MaterialType::TEST(ClearcoatBRDF::new(0.5));
+    let material_left = MaterialType::TEST(SheenBRDF::new(Vec3::new(0.8, 0.2, 0.1), 0.5));
     // let material_left = MaterialType::REFRACTIVE(Refractive::new(1.5));
     let material_right = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.8, 0.1, 0.2), 0.3));
 
@@ -392,7 +396,7 @@ fn test_scene() {
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 900;
-    camera.samples_per_pixel = 1000;
+    camera.samples_per_pixel = 100;
     camera.max_depth = 20;
 
     camera.vfov = 90.0;
@@ -413,7 +417,7 @@ fn test_scene() {
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
 
-    let x = 5;
+    let x = 6;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),

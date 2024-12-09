@@ -3,6 +3,7 @@
 // and https://schuttejoe.github.io/post/ggximportancesamplingpart2/
 
 use super::sampling::ggx;
+use super::EPS;
 use super::{
     sampling::{to_local, to_world},
     BxDF,
@@ -43,10 +44,6 @@ impl BxDF for MetalBRDF {
         let v = to_local(info.normal, view_dir);
         let l = to_local(info.normal, light_dir);
         let h = (v + l).normalize();
-
-        // // D term
-        // let d = ggx::D(h, self.roughness);
-        // d * (h.z) / (4.0 * v.dot(h).abs())
 
         let pdf_h =
             ggx::G1(v, self.roughness) * v.dot(h).abs() * ggx::D(h, self.roughness) / v.z.abs();
@@ -96,8 +93,7 @@ impl Material for MetalBRDF {
         let f = schlick_fresnel(self.base_color, l.dot(h));
         let brdf_weight = f * v.dot(h).abs() * g / (v.z.abs() * h.z.abs());
 
-        let eps = 1e-3;
-        let next_ray = Ray::new(hit_info.point + hit_info.normal * eps, dir, ray.time());
+        let next_ray = Ray::new(hit_info.point + EPS * hit_info.normal, dir, ray.time());
         (brdf_weight, Some(next_ray))
     }
 }

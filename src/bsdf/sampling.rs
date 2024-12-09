@@ -1,3 +1,7 @@
+use std::f64::consts::PI;
+
+use rand::{thread_rng, Rng};
+
 use crate::vec3::{get_rotation_to_z, Vec3};
 
 // transformations
@@ -9,6 +13,14 @@ pub fn to_local(normal: Vec3, input_world: Vec3) -> Vec3 {
 pub fn to_world(normal: Vec3, input_local: Vec3) -> Vec3 {
     let rot = get_rotation_to_z(normal).inverse();
     rot * input_local
+}
+
+pub fn cosine_sample_hemisphere() -> Vec3 {
+    let mut rng = thread_rng();
+    let phi = rng.gen_range(0.0..=2.0 * PI);
+    let r2 = rng.gen::<f64>();
+    let r2s = r2.sqrt();
+    Vec3::new(r2s * phi.cos(), r2s * phi.sin(), (1.0 - r2).sqrt())
 }
 
 /// An implementation of ideas in:
@@ -81,6 +93,8 @@ pub mod ggx {
         unstretched.normalize()
     }
 
+    #[allow(dead_code)]
+    // keeping the ndf for reference
     fn sample_ggx(_v: Vec3, a2: f64) -> Vec3 {
         let mut rng = thread_rng();
         let e1: f64 = rng.gen();
@@ -93,5 +107,37 @@ pub mod ggx {
             phi.sin() * theta.sin(),
             theta.cos(),
         )
+    }
+}
+
+#[allow(non_snake_case)]
+pub mod gtr1 {
+    use std::f64::consts::PI;
+
+    use rand::{thread_rng, Rng};
+
+    use crate::vec3::Vec3;
+
+    pub fn D(abs_cos_theta: f64, alpha_g: f64) -> f64 {
+        let alpha2 = alpha_g * alpha_g;
+        let t = 1.0 + (alpha2 - 1.0) * abs_cos_theta * abs_cos_theta;
+        (alpha2 - 1.0) / (PI * t * alpha2.log2())
+    }
+
+    pub fn sample_microfacet_normal(alpha: f64) -> Vec3 {
+        let e1 = thread_rng().gen::<f64>();
+        let e2 = thread_rng().gen::<f64>();
+
+        let alpha2 = alpha * alpha;
+        let cos_theta = (1.0 - alpha2.powf(1.0 - e1)) / (1.0 - alpha2);
+        let sin_theta = (1.0 - cos_theta * cos_theta).max(0.0).sqrt();
+        let phi = 2.0 * PI * e2;
+
+        let h = Vec3::new(sin_theta * phi.cos(), sin_theta * phi.sin(), cos_theta);
+        if h.z < 0.0 {
+            -h
+        } else {
+            h
+        }
     }
 }

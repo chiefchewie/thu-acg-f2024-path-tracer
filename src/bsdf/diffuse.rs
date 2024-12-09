@@ -1,9 +1,8 @@
 use super::{
-    sampling::{to_local, to_world},
-    BxDF,
+    sampling::{cosine_sample_hemisphere, to_local, to_world},
+    BxDF, EPS,
 };
 use crate::{hittable::HitInfo, material::Material, ray::Ray, vec3::Vec3};
-use rand::{thread_rng, Rng};
 use std::f64::consts::PI;
 
 #[derive(Clone)]
@@ -31,11 +30,12 @@ impl BxDF for DiffuseBRDF {
 
     fn pdf(&self, _view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> f64 {
         let l = to_local(info.normal, light_dir);
-        l.z / PI
+        l.z.abs() / PI
     }
 
-    fn eval(&self, _view_dir: Vec3, _light_dir: Vec3, _info: &HitInfo) -> Vec3 {
-        self.base_color / PI
+    fn eval(&self, _view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> Vec3 {
+        let l = to_local(info.normal, light_dir);
+        l.z.abs() * (self.base_color / PI)
     }
 }
 
@@ -46,17 +46,7 @@ impl Material for DiffuseBRDF {
             return (self.base_color, None);
         };
 
-        let eps = 1e-3;
-        let next_ray = Ray::new(hit_info.point + eps * hit_info.normal, dir, ray.time());
+        let next_ray = Ray::new(hit_info.point + EPS * hit_info.normal, dir, ray.time());
         (self.base_color, Some(next_ray))
     }
-}
-
-// TODO reorg into sampling.rs
-fn cosine_sample_hemisphere() -> Vec3 {
-    let mut rng = thread_rng();
-    let phi = rng.gen_range(0.0..=2.0 * PI);
-    let r2 = rng.gen::<f64>();
-    let r2s = r2.sqrt();
-    Vec3::new(r2s * phi.cos(), r2s * phi.sin(), (1.0 - r2).sqrt())
 }

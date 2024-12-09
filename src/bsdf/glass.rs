@@ -4,7 +4,7 @@
 
 use super::{
     sampling::{ggx, to_local, to_world},
-    BxDF,
+    BxDF, EPS,
 };
 use crate::{hittable::HitInfo, material::Material, ray::Ray, vec3::Vec3};
 use rand::{thread_rng, Rng};
@@ -152,8 +152,8 @@ impl Material for GlassBSDF {
         let v = to_local(hit_info.normal, -ray.direction());
         let brdf_weight = self.base_color * ggx::G1(v, self.roughness);
 
-        let eps = 1e-3 * dir.dot(hit_info.normal).signum();
-        let next_ray = Ray::new(hit_info.point + hit_info.normal * eps, dir, ray.time());
+        let eps = EPS * dir.dot(hit_info.normal).signum();
+        let next_ray = Ray::new(hit_info.point + eps * hit_info.normal, dir, ray.time());
         (brdf_weight, Some(next_ray))
     }
 }
