@@ -21,7 +21,7 @@ impl World {
         }
     }
 
-    pub fn add_light(&mut self, light: PointLight) {
+    pub fn add_point_light(&mut self, light: PointLight) {
         self.lights.push(light);
     }
 

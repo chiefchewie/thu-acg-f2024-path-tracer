@@ -230,7 +230,7 @@ fn basic_light_scene() {
         diffuse_light,
     ));
 
-    world.add_light(PointLight {
+    world.add_point_light(PointLight {
         position: Vec3::new(-2.0, 2.0, 8.0),
         power: Vec3::new(0.1, 0.5, 8.1),
     });
