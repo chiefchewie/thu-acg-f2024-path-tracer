@@ -7,7 +7,7 @@ use path_tracer::{
     hittable::{Quad, Sphere, World},
     light::PointLight,
     material::{Diffuse, DiffuseLight, MaterialType, MixMaterial, Refractive, Specular},
-    texture::{CheckerTexture, ImageTexture},
+    texture::{CheckerTexture, ImageTexture, SolidTexture},
     vec3::{random_vector, random_vector_range, Vec3},
 };
 use rand::{thread_rng, Rng};
@@ -15,8 +15,9 @@ use rand::{thread_rng, Rng};
 fn balls_scene() {
     let mut world = World::new();
 
-    let checker_tex =
-        CheckerTexture::from_colors(0.32, Vec3::new(0.2, 0.3, 0.1), Vec3::new(0.9, 0.9, 0.9));
+    let tex1 = SolidTexture::new(Vec3::new(0.2, 0.3, 0.1));
+    let tex2 = SolidTexture::new(Vec3::new(0.9, 0.9, 0.9));
+    let checker_tex = CheckerTexture::new(0.32, Arc::new(tex1), Arc::new(tex2));
 
     let mat_ground = MaterialType::DIFFUSE(Diffuse::new(Arc::new(checker_tex)));
 
@@ -97,11 +98,12 @@ fn earth_scene() {
     let mat2 = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.4, 0.2, 0.1)));
     world.add(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat2));
 
-    let mat3 = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.7, 0.6, 0.5), 0.0));
+    let mat3 = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.7, 0.6, 0.5), 0.5));
     world.add(Sphere::new_still(1.0, Vec3::new(4.0, 1.0, 0.0), mat3));
 
-    let checker_tex =
-        CheckerTexture::from_colors(0.62, Vec3::new(0.9, 0.0, 0.1), Vec3::new(0.9, 0.9, 0.9));
+    let tex1 = SolidTexture::new(Vec3::new(0.9, 0.0, 0.1));
+    let tex2 = SolidTexture::new(Vec3::new(0.9, 0.9, 0.9));
+    let checker_tex = CheckerTexture::new(0.62, Arc::new(tex1), Arc::new(tex2));
     let mat_ground = MaterialType::DIFFUSE(Diffuse::new(Arc::new(checker_tex)));
     world.add(Sphere::new_still(
         1000.0,
@@ -126,7 +128,7 @@ fn earth_scene() {
     camera.focal_length = 2.869817807;
     camera.defocus_angle = 2.5;
 
-    camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
+    camera.ambient_light = Vec3::new(0.85, 0.85, 1.0);
 
     camera.init();
     camera.render(&world, "demo/earth.png");
@@ -302,17 +304,17 @@ fn cornell_box_scene() {
 
     let mat = MaterialType::TEST(PrincipledBSDF::new(
         Vec3::new(0.65, 0.05, 0.05), // base_color,
-        0.01,                     // metallic,
-        0.01,                     // roughness,
-        0.01,                     // subsurface,
-        0.91,                     // specular,
-        0.91,                     // specular_tint,
-        1.5,                      // ior,
-        0.01,                     // spec_trans,
-        0.91,                     // sheen,
-        0.91,                     // sheen_tint,
-        0.91,                     // clearcoat,
-        0.01,                     // clearcoat_gloss,
+        0.01,                        // metallic,
+        0.01,                        // roughness,
+        0.01,                        // subsurface,
+        0.91,                        // specular,
+        0.91,                        // specular_tint,
+        1.5,                         // ior,
+        0.01,                        // spec_trans,
+        0.91,                        // sheen,
+        0.91,                        // sheen_tint,
+        0.91,                        // clearcoat,
+        0.01,                        // clearcoat_gloss,
     ));
     world.add(Sphere::new_still(
         105.0,
@@ -441,7 +443,7 @@ fn test_scene() {
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
 
-    let x = 5;
+    let x = 2;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),

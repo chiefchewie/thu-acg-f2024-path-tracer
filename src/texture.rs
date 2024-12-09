@@ -4,58 +4,44 @@ use image::{ImageBuffer, ImageReader, Pixel, Rgb};
 
 use crate::vec3::Vec3;
 
-pub trait Texture: Send + Sync {
-    fn value(&self, u: f64, v: f64, point: &Vec3) -> Vec3;
+pub trait Texture<T: Clone + Send + Sync>: Send + Sync {
+    fn value(&self, u: f64, v: f64, point: &Vec3) -> T;
 }
 
-pub struct SolidColorTexture {
-    albedo: Vec3,
+pub struct SolidTexture<T> {
+    value: T,
 }
 
-impl SolidColorTexture {
-    pub fn new(r: f64, g: f64, b: f64) -> SolidColorTexture {
-        SolidColorTexture {
-            albedo: Vec3::new(r, g, b),
-        }
-    }
-
-    pub fn from_vec(albedo: Vec3) -> SolidColorTexture {
-        SolidColorTexture { albedo }
+impl<T> SolidTexture<T> {
+    pub fn new(value: T) -> Self {
+        SolidTexture { value }
     }
 }
 
-impl Texture for SolidColorTexture {
-    fn value(&self, _u: f64, _v: f64, _point: &Vec3) -> Vec3 {
-        self.albedo
+impl<T: Clone + Send + Sync> Texture<T> for SolidTexture<T> {
+    fn value(&self, _u: f64, _v: f64, _point: &Vec3) -> T {
+        self.value.clone()
     }
 }
 
-pub struct CheckerTexture {
+pub struct CheckerTexture<T> {
     inv_scale: f64,
-    tex1: Arc<dyn Texture>,
-    tex2: Arc<dyn Texture>,
+    tex1: Arc<dyn Texture<T>>,
+    tex2: Arc<dyn Texture<T>>,
 }
 
-impl CheckerTexture {
-    pub fn new(scale: f64, tex1: Arc<dyn Texture>, tex2: Arc<dyn Texture>) -> CheckerTexture {
+impl<T> CheckerTexture<T> {
+    pub fn new(scale: f64, tex1: Arc<dyn Texture<T>>, tex2: Arc<dyn Texture<T>>) -> Self {
         CheckerTexture {
             inv_scale: scale.recip(),
             tex1,
             tex2,
         }
     }
-
-    pub fn from_colors(scale: f64, color1: Vec3, color2: Vec3) -> CheckerTexture {
-        CheckerTexture {
-            inv_scale: scale.recip(),
-            tex1: Arc::new(SolidColorTexture::from_vec(color1)),
-            tex2: Arc::new(SolidColorTexture::from_vec(color2)),
-        }
-    }
 }
 
-impl Texture for CheckerTexture {
-    fn value(&self, u: f64, v: f64, point: &Vec3) -> Vec3 {
+impl<T: Clone + Send + Sync> Texture<T> for CheckerTexture<T> {
+    fn value(&self, u: f64, v: f64, point: &Vec3) -> T {
         let x = (point.x * self.inv_scale).floor() as i32;
         let y = (point.y * self.inv_scale).floor() as i32;
         let z = (point.z * self.inv_scale).floor() as i32;
@@ -82,7 +68,7 @@ impl ImageTexture {
     }
 }
 
-impl Texture for ImageTexture {
+impl Texture<Vec3> for ImageTexture {
     fn value(&self, u: f64, v: f64, _point: &Vec3) -> Vec3 {
         if self.img.height() == 0 {
             return Vec3::new(0.0, 1.0, 1.0);

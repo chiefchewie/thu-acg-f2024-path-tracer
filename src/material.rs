@@ -6,7 +6,7 @@ use crate::{
     bsdf::principled::PrincipledBSDF,
     hittable::hit_info::HitInfo,
     ray::Ray,
-    texture::{SolidColorTexture, Texture},
+    texture::{SolidTexture, Texture},
     vec3::{random_vector, Vec3},
 };
 
@@ -22,17 +22,17 @@ pub trait Material: Send + Sync {
 
 #[derive(Clone)]
 pub struct Diffuse {
-    texture: Arc<dyn Texture>,
+    texture: Arc<dyn Texture<Vec3>>,
 }
 
 impl Diffuse {
-    pub fn new(texture: Arc<dyn Texture>) -> Diffuse {
+    pub fn new(texture: Arc<dyn Texture<Vec3>>) -> Diffuse {
         Diffuse { texture }
     }
 
     pub fn from_rgb(rgb: Vec3) -> Diffuse {
         Diffuse {
-            texture: Arc::new(SolidColorTexture::from_vec(rgb)),
+            texture: Arc::new(SolidTexture::new(rgb)),
         }
     }
 }
@@ -68,18 +68,18 @@ impl Material for Diffuse {
 
 #[derive(Clone)]
 pub struct Specular {
-    texture: Arc<dyn Texture>,
+    texture: Arc<dyn Texture<Vec3>>,
     roughness: f64,
 }
 
 impl Specular {
-    pub fn new(texture: Arc<dyn Texture>, roughness: f64) -> Specular {
+    pub fn new(texture: Arc<dyn Texture<Vec3>>, roughness: f64) -> Specular {
         Specular { texture, roughness }
     }
 
     pub fn from_rgb(rgb: Vec3, roughness: f64) -> Specular {
         Specular {
-            texture: Arc::new(SolidColorTexture::from_vec(rgb)),
+            texture: Arc::new(SolidTexture::new(rgb)),
             roughness,
         }
     }
@@ -152,24 +152,24 @@ impl Material for Refractive {
 
 #[derive(Clone)]
 pub struct DiffuseLight {
-    texture: Arc<dyn Texture>,
+    emission: Arc<dyn Texture<Vec3>>,
 }
 
 impl DiffuseLight {
-    pub fn new(texture: Arc<dyn Texture>) -> Self {
-        Self { texture }
+    pub fn new(texture: Arc<dyn Texture<Vec3>>) -> Self {
+        Self { emission: texture }
     }
 
     pub fn from_rgb(rgb: Vec3) -> Self {
         Self {
-            texture: Arc::new(SolidColorTexture::from_vec(rgb)),
+            emission: Arc::new(SolidTexture::new(rgb)),
         }
     }
 }
 
 impl Material for DiffuseLight {
     fn emitted(&self, u: f64, v: f64, p: Vec3) -> Vec3 {
-        self.texture.value(u, v, &p)
+        self.emission.value(u, v, &p)
     }
 
     fn scatter(&self, _ray: &Ray, _hit_info: &HitInfo) -> (Vec3, Option<Ray>) {

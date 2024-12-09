@@ -55,17 +55,6 @@ impl PrincipledBSDF {
         clearcoat: f64,
         clearcoat_gloss: f64,
     ) -> Self {
-        // let diffuse_component = DiffuseBRDF::new(base_color, roughness, subsurface);
-
-        // let c_tint = tint(base_color);
-        // let r0 = r0(ior);
-        // let ks = Vec3::ONE.lerp(c_tint, specular_tint);
-        // let c0 = (specular * r0 * ks).lerp(base_color, metallic);
-        // let metal_component = MetalBRDF::new(c0, roughness);
-
-        // let glass_component = GlassBSDF::new(base_color, roughness, ior);
-        // let clearcoat_component = ClearcoatBRDF::new(clearcoat_gloss);
-        // let sheen_component = SheenBRDF::new(base_color, sheen_tint);
         Self {
             base_color,
             metallic,
@@ -390,3 +379,4 @@ impl Material for PrincipledBSDF {
         (brdf_weight, Some(next_ray))
     }
 }
+
