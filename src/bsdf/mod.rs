@@ -1,5 +1,6 @@
 use crate::{hittable::HitInfo, material::Material, ray::Ray, vec3::Vec3};
 
+pub mod clearcoat;
 pub mod diffuse;
 pub mod glass;
 pub mod metal;
