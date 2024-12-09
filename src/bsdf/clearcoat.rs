@@ -1,6 +1,7 @@
 use crate::{hittable::HitInfo, material::Material, ray::Ray, vec3::Vec3};
 
 use super::{
+    r0,
     sampling::{ggx, gtr1, to_local, to_world},
     BxDF, EPS,
 };
@@ -53,8 +54,7 @@ impl BxDF for ClearcoatBRDF {
         let g = ggx::G(v, l, 0.25);
 
         let eta = 1.5;
-        let r0 = (eta - 1.0) / (eta + 1.0);
-        let r0 = Vec3::splat(r0 * r0);
+        let r0 = Vec3::splat(r0(eta));
         let f = schlick_fresnel(r0, l.dot(h));
 
         l.z.abs() * (f * d * g / (4.0 * l.z.abs() * v.z.abs()))

@@ -13,13 +13,14 @@ use rand::{thread_rng, Rng};
 pub struct GlassBSDF {
     base_color: Vec3,
     roughness: f64,
+    // anisotrpic: f64, // TODO
     ior: f64,
 }
 
 impl GlassBSDF {
-    pub fn new(roughness: f64, ior: f64) -> Self {
+    pub fn new(base_color: Vec3, roughness: f64, ior: f64) -> Self {
         Self {
-            base_color: Vec3::new(0.87, 0.2, 0.1),
+            base_color,
             roughness,
             ior,
         }

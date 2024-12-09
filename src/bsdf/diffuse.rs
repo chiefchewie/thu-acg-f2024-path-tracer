@@ -8,17 +8,12 @@ use std::f64::consts::PI;
 #[derive(Clone)]
 pub struct DiffuseBRDF {
     base_color: Vec3,
-    _roughness: f64,
-    _subsurface: f64,
 }
 
+// Lambertian diffuse, NOT the one used in PrincipledBSDF
 impl DiffuseBRDF {
-    pub fn rgb(rgb: Vec3) -> Self {
-        Self {
-            base_color: rgb,
-            _roughness: 0.0,
-            _subsurface: 0.0,
-        }
+    pub fn new(base_color: Vec3) -> Self {
+        Self { base_color }
     }
 }
 

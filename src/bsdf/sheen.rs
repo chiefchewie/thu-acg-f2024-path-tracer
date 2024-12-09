@@ -1,15 +1,10 @@
 use std::f64::consts::PI;
 
-use crate::{
-    hittable::HitInfo,
-    material::Material,
-    ray::Ray,
-    vec3::{Luminance, Vec3},
-};
+use crate::{hittable::HitInfo, material::Material, ray::Ray, vec3::Vec3};
 
 use super::{
     sampling::{cosine_sample_hemisphere, to_local, to_world},
-    BxDF, EPS,
+    tint, BxDF, EPS,
 };
 
 #[derive(Clone)]
@@ -42,11 +37,7 @@ impl BxDF for SheenBRDF {
         let v = to_local(info.normal, view_dir);
         let l = to_local(info.normal, light_dir);
         let h = (v + l).normalize();
-        let c_tint = if self.base_color.luminance() > 0.0 {
-            self.base_color / self.base_color.luminance()
-        } else {
-            Vec3::ONE
-        };
+        let c_tint = tint(self.base_color);
         let c_sheen = Vec3::ONE.lerp(c_tint, self.sheen_tint);
         c_sheen * (1.0 - l.dot(h).abs()).powi(5) * (l.z.abs())
     }

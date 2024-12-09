@@ -29,6 +29,9 @@ https://boksajak.github.io/blog/BRDF
 This link has an implementation, which I'm currently following for the overall layout. However, I plan to change it because there are some things that I don't like about it, such as how they are determining the lobe probabilities, some of the conditions for evaluating each lobe, and I think the sampling procedures can be optimized which I'd like to do. I'd like to acknowledge that my final implementation might still end up similar to this, since we're both implementing the same thing (Disney BRDF) at the end of the day.
 https://github.com/knightcrawler25/GLSL-PathTracer/blob/master/src/shaders/common/disney.glsl 
 
+For help understanding importance sampling and multiple importance sampling
+https://lisyarus.github.io/blog/posts/multiple-importance-sampling.html#section-importance-sampling
+
 When I get to participating media (volumetric rendering) and multiple importance sampling, I will likely reference Ray Tracing Gems and the pbrt book for their ideas and example implementations.
 
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/cPlbGtcU)
