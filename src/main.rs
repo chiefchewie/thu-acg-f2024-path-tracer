@@ -6,7 +6,7 @@ use path_tracer::{
     camera::Camera,
     hittable::{Quad, Sphere, World},
     light::PointLight,
-    material::{DiffuseLight, MaterialType, MixMaterial, Refractive},
+    material::{DiffuseLight, MaterialType, MixMaterial},
     texture::{CheckerTexture, ImageTexture, SolidTexture},
     vec3::{random_vector, random_vector_range, Vec3},
 };
