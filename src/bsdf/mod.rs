@@ -9,6 +9,7 @@ pub mod clearcoat;
 pub mod diffuse;
 pub mod glass;
 pub mod metal;
+pub mod mix;
 pub mod principled;
 pub mod sampling;
 pub mod sheen;

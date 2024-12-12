@@ -3,14 +3,12 @@ use std::{f64::consts::PI, sync::Arc};
 use rand::{thread_rng, Rng};
 
 use crate::{
-    bsdf::{diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, principled::PrincipledBSDF},
+    bsdf::{diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, mix::MixBxDf, principled::PrincipledBSDF},
     hittable::hit_info::HitInfo,
     ray::Ray,
     texture::{SolidTexture, Texture},
     vec3::{random_vector, Vec3},
 };
-
-const EPS: f64 = 1e-3;
 
 pub trait Material: Send + Sync {
     /// returns: attenuation (brdf/pdf), and optionally the scattered ray
@@ -20,6 +18,7 @@ pub trait Material: Send + Sync {
     }
 }
 
+// const EPS: f64 = 1e-3;
 // #[derive(Clone)]
 // pub struct Diffuse {
 //     texture: Arc<dyn Texture<Vec3>>,
@@ -177,33 +176,33 @@ impl Material for DiffuseLight {
     }
 }
 
-#[derive(Clone)]
-pub struct MixMaterial {
-    t: f64, // 0 = use mat1 entirely, 1 = use mat2 entirely
-    mat1: Arc<dyn Material>,
-    mat2: Arc<dyn Material>,
-}
+// #[derive(Clone)]
+// pub struct MixMaterial {
+//     t: f64, // 0 = use mat1 entirely, 1 = use mat2 entirely
+//     mat1: Arc<dyn Material>,
+//     mat2: Arc<dyn Material>,
+// }
 
-impl MixMaterial {
-    pub fn new(t: f64, mat1: Arc<dyn Material>, mat2: Arc<dyn Material>) -> MixMaterial {
-        Self {
-            t: t.clamp(0.0, 1.0),
-            mat1,
-            mat2,
-        }
-    }
-}
+// impl MixMaterial {
+//     pub fn new(t: f64, mat1: Arc<dyn Material>, mat2: Arc<dyn Material>) -> MixMaterial {
+//         Self {
+//             t: t.clamp(0.0, 1.0),
+//             mat1,
+//             mat2,
+//         }
+//     }
+// }
 
-impl Material for MixMaterial {
-    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
-        let p: f64 = thread_rng().gen();
-        if self.t < p {
-            self.mat1.scatter(ray, hit_info)
-        } else {
-            self.mat2.scatter(ray, hit_info)
-        }
-    }
-}
+// impl Material for MixMaterial {
+//     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
+//         let p: f64 = thread_rng().gen();
+//         if self.t < p {
+//             self.mat1.scatter(ray, hit_info)
+//         } else {
+//             self.mat2.scatter(ray, hit_info)
+//         }
+//     }
+// }
 
 #[derive(Clone)]
 pub enum MaterialType {
@@ -212,7 +211,7 @@ pub enum MaterialType {
     SPECULAR(MetalBRDF),
     REFRACTIVE(GlassBSDF),
     LIGHT(DiffuseLight),
-    MIX(MixMaterial),
+    MIX(MixBxDf),
 }
 
 impl Default for MaterialType {

@@ -2,11 +2,11 @@ use std::env;
 use std::sync::Arc;
 
 use path_tracer::{
-    bsdf::{diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, principled::PrincipledBSDF},
+    bsdf::{diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, mix::MixBxDf, principled::PrincipledBSDF},
     camera::Camera,
     hittable::{Quad, Sphere, World},
     light::PointLight,
-    material::{DiffuseLight, MaterialType, MixMaterial},
+    material::{DiffuseLight, MaterialType},
     texture::{CheckerTexture, ImageTexture, SolidTexture},
     vec3::{random_vector, random_vector_range, Vec3},
 };
@@ -209,7 +209,8 @@ fn basic_light_scene() {
     // plasticy cermaicy material???
     let mat1a = DiffuseBRDF::from_rgb(Vec3::new(0.7, 0.9, 0.5));
     let mat1b = MetalBRDF::from_rgb(Vec3::ONE, 0.1);
-    let mat1 = MaterialType::MIX(MixMaterial::new(0.05, Arc::new(mat1a), Arc::new(mat1b)));
+    // let mat1 = MaterialType::MIX(MixMaterial::new(0.05, Arc::new(mat1a), Arc::new(mat1b)));
+    let mat1 = MaterialType::MIX(MixBxDf::new(0.05, Arc::new(mat1a), Arc::new(mat1b)));
     world.add(Sphere::new_still(2.0, Vec3::new(-4.0, 2.0, 0.0), mat1));
 
     let mat_diffuse = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::ONE));
@@ -449,7 +450,7 @@ fn test_scene() {
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
 
-    let x = 1;
+    let x = 4;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),
