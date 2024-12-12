@@ -1,9 +1,9 @@
-use crate::{hittable::HitInfo, material::Material, ray::Ray, vec3::Vec3};
+use crate::{hittable::HitInfo, ray::Ray, vec3::Vec3};
 
 use super::{
     r0,
     sampling::{ggx, gtr1, to_local, to_world},
-    BxDF, EPS,
+    BxDFMaterial,
 };
 
 #[derive(Clone)]
@@ -19,7 +19,7 @@ impl ClearcoatBRDF {
     }
 }
 
-impl BxDF for ClearcoatBRDF {
+impl BxDFMaterial for ClearcoatBRDF {
     fn sample(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let view_dir = -ray.direction();
         let v = to_local(info.normal, view_dir);
@@ -58,22 +58,6 @@ impl BxDF for ClearcoatBRDF {
         let f = schlick_fresnel(r0, l.dot(h));
 
         l.z.abs() * (f * d * g / (4.0 * l.z.abs() * v.z.abs()))
-    }
-}
-
-impl Material for ClearcoatBRDF {
-    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
-        let Some(dir) = self.sample(ray, hit_info) else {
-            return (Vec3::ONE, None);
-        };
-
-        let pdf = self.pdf(-ray.direction(), dir, hit_info);
-        let brdf = self.eval(-ray.direction(), dir, hit_info);
-        let brdf_weight = brdf / pdf;
-
-        let eps = EPS * dir.dot(hit_info.normal).signum();
-        let next_ray = Ray::new(hit_info.point + eps * hit_info.normal, dir, ray.time());
-        (brdf_weight, Some(next_ray))
     }
 }
 

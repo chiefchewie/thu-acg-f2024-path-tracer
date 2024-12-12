@@ -1,4 +1,4 @@
-use crate::{material::MaterialType, vec3::Vec3};
+use crate::{bsdf::MatPtr, vec3::Vec3};
 
 use super::{Hittable, Quad, World};
 
@@ -7,7 +7,7 @@ pub struct Cuboid {
 }
 
 impl Cuboid {
-    pub fn new(a: Vec3, b: Vec3, mat: MaterialType) -> Cuboid {
+    pub fn new(a: Vec3, b: Vec3, mat: MatPtr) -> Cuboid {
         let mut sides = World::new();
         let min = a.min(b);
         let max = a.max(b);

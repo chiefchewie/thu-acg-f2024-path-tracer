@@ -1,6 +1,7 @@
+use std::sync::Arc;
+
 use crate::{
     hittable::HitInfo,
-    material::Material,
     ray::Ray,
     vec3::{Luminance, Vec3},
 };
@@ -16,7 +17,7 @@ pub mod sheen;
 
 pub(crate) const EPS: f64 = 1e-3;
 
-pub trait BxDF: Material {
+pub trait BxDFMaterial: Send + Sync {
     /// Given the outgoing (view) ray and hit info, sample an incident (light) ray
     fn sample(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3>;
 
@@ -25,7 +26,24 @@ pub trait BxDF: Material {
 
     /// Given an outgoing and incoming ray and hit info, compute the reflectance
     fn eval(&self, view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> Vec3;
+
+    /// returns: attenuation (brdf/pdf), and the scattered ray
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> Option<(Vec3, Ray)> {
+        let dir = self.sample(ray, hit_info)?;
+        let pdf = self.pdf(-ray.direction(), dir, hit_info);
+        let brdf = self.eval(-ray.direction(), dir, hit_info);
+        let brdf_weight = brdf / pdf;
+        let eps = EPS * dir.dot(hit_info.normal).signum();
+        let next_ray = Ray::new(hit_info.point + eps * hit_info.normal, dir, ray.time());
+        Some((brdf_weight, next_ray))
+    }
+
+    fn emitted(&self, _u: f64, _v: f64, _p: Vec3) -> Vec3 {
+        Vec3::ZERO
+    }
 }
+
+pub type MatPtr = Arc<dyn BxDFMaterial>;
 
 pub fn tint(base_color: Vec3) -> Vec3 {
     // c_tint

@@ -2,13 +2,13 @@ use std::{f64::consts::PI, sync::Arc};
 
 use glam::FloatExt;
 
-use crate::{hittable::HitInfo, material::Material, ray::Ray, texture::Texture, vec3::Vec3};
+use crate::{hittable::HitInfo, ray::Ray, texture::Texture, vec3::Vec3};
 
 use super::{
     fresnel::{self, schlick_weight},
     r0,
     sampling::{cosine_sample_hemisphere, ggx, gtr1, to_local, to_world},
-    tint, BxDF, EPS,
+    tint, BxDFMaterial,
 };
 
 #[derive(Clone)]
@@ -258,7 +258,7 @@ impl PrincipledBSDF {
     }
 }
 
-impl BxDF for PrincipledBSDF {
+impl BxDFMaterial for PrincipledBSDF {
     fn sample(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let (diffuse_wt, specular_wt, glass_wt, clearcoat_wt) = self.lobe_weights();
         let (diffuse_p, specular_p, glass_p, _) =
@@ -363,21 +363,5 @@ impl BxDF for PrincipledBSDF {
         }
 
         brdf * l.z.abs()
-    }
-}
-
-impl Material for PrincipledBSDF {
-    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
-        let Some(dir) = self.sample(ray, hit_info) else {
-            return (Vec3::ONE, None);
-        };
-
-        let pdf = self.pdf(-ray.direction(), dir, hit_info);
-        let brdf = self.eval(-ray.direction(), dir, hit_info);
-        let brdf_weight = brdf / pdf;
-
-        let eps = EPS * dir.dot(hit_info.normal).signum();
-        let next_ray = Ray::new(hit_info.point + eps * hit_info.normal, dir, ray.time());
-        (brdf_weight, Some(next_ray))
     }
 }

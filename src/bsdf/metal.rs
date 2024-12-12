@@ -8,10 +8,10 @@ use super::sampling::ggx;
 use super::EPS;
 use super::{
     sampling::{to_local, to_world},
-    BxDF,
+    BxDFMaterial,
 };
 use crate::texture::{SolidTexture, Texture};
-use crate::{hittable::HitInfo, material::Material, ray::Ray, vec3::Vec3};
+use crate::{hittable::HitInfo, ray::Ray, vec3::Vec3};
 
 #[derive(Clone)]
 pub struct MetalBRDF {
@@ -35,7 +35,7 @@ impl MetalBRDF {
     }
 }
 
-impl BxDF for MetalBRDF {
+impl BxDFMaterial for MetalBRDF {
     fn sample(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let view_dir = -ray.direction();
         let v = to_local(info.normal, view_dir);
@@ -78,28 +78,17 @@ impl BxDF for MetalBRDF {
         let f = schlick_fresnel(base_color, l.dot(h));
         l.z.abs() * (f * g * d / (4.0 * l.z.abs() * v.z.abs()))
     }
-}
 
-impl Material for MetalBRDF {
-    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> Option<(Vec3, Ray)> {
+        let dir = self.sample(ray, hit_info)?;
+
+        // simplified faster impl
         let roughness = self
             .roughness
             .value(hit_info.u, hit_info.v, &hit_info.point);
         let base_color = self
             .base_color
             .value(hit_info.u, hit_info.v, &hit_info.point);
-
-        // but here's a more optimized version
-        let Some(dir) = self.sample(ray, hit_info) else {
-            return (base_color, None);
-        };
-
-        // default impl
-        // let pdf = self.pdf(-ray.direction(), dir, hit_info);
-        // let brdf = self.eval(-ray.direction(), dir, hit_info);
-        // let brdf_weight = brdf / pdf;
-
-        // simplified faster impl
         let v = to_local(hit_info.normal, -ray.direction());
         let l = to_local(hit_info.normal, dir);
         let h = (v + l).normalize();
@@ -111,7 +100,7 @@ impl Material for MetalBRDF {
         let brdf_weight = f * v.dot(h).abs() * g / (v.z.abs() * h.z.abs());
 
         let next_ray = Ray::new(hit_info.point + EPS * hit_info.normal, dir, ray.time());
-        (brdf_weight, Some(next_ray))
+        Some((brdf_weight, next_ray))
     }
 }
 

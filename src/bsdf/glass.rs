@@ -6,11 +6,10 @@ use std::sync::Arc;
 
 use super::{
     sampling::{ggx, to_local, to_world},
-    BxDF, EPS,
+    BxDFMaterial, EPS,
 };
 use crate::{
     hittable::HitInfo,
-    material::Material,
     ray::Ray,
     texture::{SolidTexture, Texture},
     vec3::Vec3,
@@ -63,7 +62,7 @@ impl GlassBSDF {
     }
 }
 
-impl BxDF for GlassBSDF {
+impl BxDFMaterial for GlassBSDF {
     fn sample(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let view_dir = -ray.direction();
         let v = to_local(info.normal, view_dir);
@@ -162,18 +161,9 @@ impl BxDF for GlassBSDF {
         };
         result * l.z.abs()
     }
-}
 
-impl Material for GlassBSDF {
-    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
-        let Some(dir) = self.sample(ray, hit_info) else {
-            return (Vec3::ONE, None);
-        };
-
-        // default slow impl
-        // let pdf = self.pdf(-ray.direction(), dir, hit_info);
-        // let brdf = self.eval(-ray.direction(), dir, hit_info);
-        // let brdf_weight = brdf / pdf;
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> Option<(Vec3, Ray)> {
+        let dir = self.sample(ray, hit_info)?;
 
         // simplified faster impl
         let v = to_local(hit_info.normal, -ray.direction());
@@ -188,6 +178,6 @@ impl Material for GlassBSDF {
 
         let eps = EPS * dir.dot(hit_info.normal).signum();
         let next_ray = Ray::new(hit_info.point + eps * hit_info.normal, dir, ray.time());
-        (brdf_weight, Some(next_ray))
+        Some((brdf_weight, next_ray))
     }
 }

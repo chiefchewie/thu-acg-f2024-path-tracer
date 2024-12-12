@@ -1,4 +1,4 @@
-use crate::{interval::Interval, material::MaterialType, ray::Ray, vec3::Vec3};
+use crate::{bsdf::MatPtr, interval::Interval, ray::Ray, vec3::Vec3};
 
 use super::{hit_info::HitInfo, Hittable, AABB};
 
@@ -10,11 +10,11 @@ pub struct Quad {
     normal: Vec3,
     d: f64,
     bbox: AABB,
-    material: MaterialType,
+    material: MatPtr,
 }
 
 impl Quad {
-    pub fn new(q: Vec3, u: Vec3, v: Vec3, material: MaterialType) -> Quad {
+    pub fn new(q: Vec3, u: Vec3, v: Vec3, material: MatPtr) -> Quad {
         let b1 = AABB::new(q, q + u + v);
         let b2 = AABB::new(q + u, q + v);
         let bbox = b1.union(b2);

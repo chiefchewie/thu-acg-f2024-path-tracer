@@ -1,10 +1,9 @@
 use super::{
     sampling::{cosine_sample_hemisphere, to_local, to_world},
-    BxDF, EPS,
+    BxDFMaterial, EPS,
 };
 use crate::{
     hittable::HitInfo,
-    material::Material,
     ray::Ray,
     texture::{SolidTexture, Texture},
     vec3::Vec3,
@@ -29,7 +28,7 @@ impl DiffuseBRDF {
     }
 }
 
-impl BxDF for DiffuseBRDF {
+impl BxDFMaterial for DiffuseBRDF {
     fn sample(&self, _ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let diffuse_dir_local = cosine_sample_hemisphere();
         Some(to_world(info.normal, diffuse_dir_local))
@@ -45,19 +44,14 @@ impl BxDF for DiffuseBRDF {
         let l = to_local(info.normal, light_dir);
         l.z.abs() * (color / PI)
     }
-}
 
-impl Material for DiffuseBRDF {
     /// optimized version combining sample, pdf, and eval
-    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
+    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> Option<(Vec3, Ray)> {
         let color = self
             .base_color
             .value(hit_info.u, hit_info.v, &hit_info.point);
-        let Some(dir) = self.sample(ray, hit_info) else {
-            return (Vec3::ONE, None);
-        };
-
+        let dir = self.sample(ray, hit_info)?;
         let next_ray = Ray::new(hit_info.point + EPS * hit_info.normal, dir, ray.time());
-        (color, Some(next_ray))
+        Some((color, next_ray))
     }
 }

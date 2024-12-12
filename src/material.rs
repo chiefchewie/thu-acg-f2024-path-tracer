@@ -1,23 +1,20 @@
 use std::sync::Arc;
 
 use crate::{
-    bsdf::{
-        diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, mix::MixBxDf,
-        principled::PrincipledBSDF,
-    },
+    bsdf::BxDFMaterial,
     hittable::hit_info::HitInfo,
     ray::Ray,
     texture::{SolidTexture, Texture},
     vec3::Vec3,
 };
 
-pub trait Material: Send + Sync {
-    /// returns: attenuation (brdf/pdf), and optionally the scattered ray
-    fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>);
-    fn emitted(&self, _u: f64, _v: f64, _p: Vec3) -> Vec3 {
-        Vec3::ZERO
-    }
-}
+// pub trait Material: Send + Sync {
+//     /// returns: attenuation (brdf/pdf), and optionally the scattered ray
+//     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>);
+//     fn emitted(&self, _u: f64, _v: f64, _p: Vec3) -> Vec3 {
+//         Vec3::ZERO
+//     }
+// }
 
 // const EPS: f64 = 1e-3;
 // #[derive(Clone)]
@@ -167,13 +164,25 @@ impl DiffuseLight {
     }
 }
 
-impl Material for DiffuseLight {
-    fn emitted(&self, u: f64, v: f64, p: Vec3) -> Vec3 {
-        self.emission.value(u, v, &p)
+impl BxDFMaterial for DiffuseLight {
+    fn sample(&self, _ray: &Ray, _info: &HitInfo) -> Option<Vec3> {
+        None
     }
 
-    fn scatter(&self, _ray: &Ray, _hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
-        (Vec3::ZERO, None)
+    fn pdf(&self, _view_dir: Vec3, _light_dir: Vec3, _info: &HitInfo) -> f64 {
+        1.0
+    }
+
+    fn eval(&self, _view_dir: Vec3, _light_dir: Vec3, _info: &HitInfo) -> Vec3 {
+        Vec3::ONE
+    }
+
+    fn scatter(&self, _ray: &Ray, _hit_info: &HitInfo) -> Option<(Vec3, Ray)> {
+        None
+    }
+
+    fn emitted(&self, u: f64, v: f64, p: Vec3) -> Vec3 {
+        self.emission.value(u, v, &p)
     }
 }
 
@@ -205,19 +214,19 @@ impl Material for DiffuseLight {
 //     }
 // }
 
-#[derive(Clone)]
-pub enum MaterialType {
-    TEST(PrincipledBSDF),
-    DIFFUSE(DiffuseBRDF),
-    SPECULAR(MetalBRDF),
-    REFRACTIVE(GlassBSDF),
-    LIGHT(DiffuseLight),
-    MIX(MixBxDf),
-}
+// #[derive(Clone)]
+// pub enum MaterialType {
+//     TEST(PrincipledBSDF),
+//     DIFFUSE(DiffuseBRDF),
+//     SPECULAR(MetalBRDF),
+//     REFRACTIVE(GlassBSDF),
+//     LIGHT(DiffuseLight),
+//     MIX(MixBxDf),
+// }
 
-impl Default for MaterialType {
-    fn default() -> Self {
-        // Self::DIFFUSE(Diffuse::from_rgb(Vec3::ONE))
-        Self::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::ONE))
-    }
-}
+// impl Default for MaterialType {
+//     fn default() -> Self {
+//         // Self::DIFFUSE(Diffuse::from_rgb(Vec3::ONE))
+//         Self::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::ONE))
+//     }
+// }

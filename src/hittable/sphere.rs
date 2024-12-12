@@ -1,8 +1,9 @@
 use std::f64::consts::PI;
 
+use crate::bsdf::MatPtr;
 use crate::interval::Interval;
 use crate::ray::Ray;
-use crate::{material::MaterialType, vec3::Vec3};
+use crate::vec3::Vec3;
 
 use super::hit_info::HitInfo;
 use super::Hittable;
@@ -13,12 +14,12 @@ pub struct Sphere {
     radius: f64,
     position1: Vec3,
     position2: Vec3,
-    material: MaterialType,
+    material: MatPtr,
     bbox: AABB,
 }
 
 impl Sphere {
-    pub fn new_still(radius: f64, position: Vec3, material: MaterialType) -> Sphere {
+    pub fn new_still(radius: f64, position: Vec3, material: MatPtr) -> Sphere {
         let rvec = Vec3::new(radius, radius, radius);
         let bbox = AABB::new(position - rvec, position + rvec);
         Sphere {
@@ -30,12 +31,7 @@ impl Sphere {
         }
     }
 
-    pub fn new_moving(
-        radius: f64,
-        position1: Vec3,
-        position2: Vec3,
-        material: MaterialType,
-    ) -> Sphere {
+    pub fn new_moving(radius: f64, position1: Vec3, position2: Vec3, material: MatPtr) -> Sphere {
         let rvec = Vec3::new(radius, radius, radius);
         let box1 = AABB::new(position1 - rvec, position1 + rvec);
         let box2 = AABB::new(position2 - rvec, position2 + rvec);

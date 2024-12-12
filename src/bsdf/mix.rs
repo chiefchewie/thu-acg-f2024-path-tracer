@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
-use crate::{hittable::HitInfo, material::Material, ray::Ray, vec3::Vec3};
+use crate::{hittable::HitInfo, ray::Ray, vec3::Vec3};
 
-use super::{BxDF, EPS};
+use super::BxDFMaterial;
 
 #[derive(Clone)]
 pub struct MixBxDf {
     t: f64, // 0 = use mat1 entirely, 1 = use mat2 entirely
-    bxdf1: Arc<dyn BxDF>,
-    bxdf2: Arc<dyn BxDF>,
+    bxdf1: Arc<dyn BxDFMaterial>,
+    bxdf2: Arc<dyn BxDFMaterial>,
 }
 
 impl MixBxDf {
-    pub fn new(t: f64, bxdf1: Arc<dyn BxDF>, bxdf2: Arc<dyn BxDF>) -> MixBxDf {
+    pub fn new(t: f64, bxdf1: Arc<dyn BxDFMaterial>, bxdf2: Arc<dyn BxDFMaterial>) -> MixBxDf {
         Self {
             t: t.clamp(0.0, 1.0),
             bxdf1,
@@ -21,7 +21,7 @@ impl MixBxDf {
     }
 }
 
-impl BxDF for MixBxDf {
+impl BxDFMaterial for MixBxDf {
     fn sample(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let p: f64 = rand::random();
         if self.t < p {
@@ -41,25 +41,5 @@ impl BxDF for MixBxDf {
         let w1 = (1.0 - self.t) * self.bxdf1.eval(view_dir, light_dir, info);
         let w2 = self.t * self.bxdf2.eval(view_dir, light_dir, info);
         w1 + w2
-    }
-}
-
-impl Material for MixBxDf {
-    fn scatter(
-        &self,
-        ray: &crate::ray::Ray,
-        hit_info: &crate::hittable::HitInfo,
-    ) -> (Vec3, Option<Ray>) {
-        let dir = self.sample(ray, hit_info);
-        let Some(dir) = dir else {
-            return (crate::vec3::Vec3::ONE, None);
-        };
-        let pdf = self.pdf(-ray.direction(), dir, hit_info);
-        let brdf = self.eval(-ray.direction(), dir, hit_info);
-        let brdf_weight = brdf / pdf;
-
-        let eps = EPS * dir.dot(hit_info.normal).signum();
-        let next_ray = Ray::new(hit_info.point + eps * hit_info.normal, dir, ray.time());
-        (brdf_weight, Some(next_ray))
     }
 }

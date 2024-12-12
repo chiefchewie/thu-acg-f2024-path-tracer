@@ -4,7 +4,6 @@ use std::{f64::consts::PI, time::Instant};
 use crate::{
     hittable::{Hittable, World},
     interval::Interval,
-    material::{Material, MaterialType},
     ray::Ray,
     vec3::{Luminance, Vec2, Vec3},
 };
@@ -172,44 +171,24 @@ impl Camera {
                 break;
             };
 
-            // explictily sampling point lights for diffuse materials
-            // TODO explicitly sample ALL lights, for ALL materials
-            if let MaterialType::DIFFUSE(_) = hit_info.mat {
-                for light in world.get_lights() {
-                    let result = world.shadow_ray(hit_info.point, light.position, ray.time());
-                    if result {
-                        let light_dir = (light.position - hit_info.point).normalize();
-                        let len = (light.position - hit_info.point).length();
-                        let color =
-                            (light.power / (len * len)) * hit_info.normal.dot(light_dir).max(0.0);
-                        radiance += throughput * color;
-                    }
+            // TODO figure this out for real (MULTIPLE IMPORTANCE SAMPLING)
+            for light in world.get_lights() {
+                let result = world.shadow_ray(hit_info.point, light.position, ray.time());
+                if result {
+                    let light_dir = (light.position - hit_info.point).normalize();
+                    let len = (light.position - hit_info.point).length();
+                    let color = (light.power / (len * len))
+                        * hit_info.mat.eval(-ray.direction(), light_dir, &hit_info)
+                        / hit_info.mat.pdf(-ray.direction(), light_dir, &hit_info);
+                    radiance += throughput * color;
                 }
             }
 
-            let emission = match hit_info.mat {
-                MaterialType::DIFFUSE(ref diffuse) => {
-                    diffuse.emitted(hit_info.u, hit_info.v, hit_info.point)
-                }
-                MaterialType::SPECULAR(ref specular) => {
-                    specular.emitted(hit_info.u, hit_info.v, hit_info.point)
-                }
-                MaterialType::REFRACTIVE(ref refractive) => {
-                    refractive.emitted(hit_info.u, hit_info.v, hit_info.point)
-                }
-                MaterialType::LIGHT(ref diffuse_light) => {
-                    diffuse_light.emitted(hit_info.u, hit_info.v, hit_info.point)
-                }
-                MaterialType::MIX(ref mix_material) => {
-                    mix_material.emitted(hit_info.u, hit_info.v, hit_info.point)
-                }
-                MaterialType::TEST(_) => Vec3::ZERO,
-            };
+            let emission = hit_info.mat.emitted(hit_info.u, hit_info.v, hit_info.point);
             radiance += emission * throughput;
 
+            // russian roulette
             if bounces > min_bounces {
-                // russian roulette
-                // let p = throughput.max_element();
                 let p = throughput.luminance();
                 if thread_rng().gen::<f64>() > p {
                     break;
@@ -218,19 +197,12 @@ impl Camera {
             }
 
             // attenuation = brdf / pdf in the lingo
-            let (attenuation, next_ray) = match hit_info.mat {
-                MaterialType::DIFFUSE(ref diffuse) => diffuse.scatter(&ray, &hit_info),
-                MaterialType::SPECULAR(ref specular) => specular.scatter(&ray, &hit_info),
-                MaterialType::REFRACTIVE(ref refractive) => refractive.scatter(&ray, &hit_info),
-                MaterialType::LIGHT(ref diffuse_light) => diffuse_light.scatter(&ray, &hit_info),
-                MaterialType::MIX(ref mix_material) => mix_material.scatter(&ray, &hit_info),
-                MaterialType::TEST(ref diffuse_brdf) => diffuse_brdf.scatter(&ray, &hit_info),
-            };
-            if let Some(scatter_ray) = next_ray {
-                throughput *= attenuation;
-                ray = scatter_ray;
-            } else {
-                break;
+            match hit_info.mat.scatter(&ray, &hit_info) {
+                Some((attenuation, next_ray)) => {
+                    throughput *= attenuation;
+                    ray = next_ray;
+                }
+                None => break,
             }
         }
         radiance
