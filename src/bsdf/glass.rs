@@ -2,26 +2,49 @@
 // with help from https://schuttejoe.github.io/post/ggximportancesamplingpart1/
 // and https://schuttejoe.github.io/post/ggximportancesamplingpart2/
 
+use std::sync::Arc;
+
 use super::{
     sampling::{ggx, to_local, to_world},
     BxDF, EPS,
 };
-use crate::{hittable::HitInfo, material::Material, ray::Ray, vec3::Vec3};
+use crate::{
+    hittable::HitInfo,
+    material::Material,
+    ray::Ray,
+    texture::{SolidTexture, Texture},
+    vec3::Vec3,
+};
 use rand::{thread_rng, Rng};
 
 #[derive(Clone)]
 pub struct GlassBSDF {
-    base_color: Vec3,
-    roughness: f64,
-    // anisotrpic: f64, // TODO
+    base_color: Arc<dyn Texture<Vec3>>,
+    roughness: Arc<dyn Texture<f64>>,
+    _anisotropic: f64,
     ior: f64,
 }
 
 impl GlassBSDF {
-    pub fn new(base_color: Vec3, roughness: f64, ior: f64) -> Self {
+    pub fn new(
+        base_color: Arc<dyn Texture<Vec3>>,
+        roughness: Arc<dyn Texture<f64>>,
+        anisotropic: f64,
+        ior: f64,
+    ) -> Self {
         Self {
             base_color,
             roughness,
+            _anisotropic: anisotropic,
+            ior,
+        }
+    }
+
+    pub fn basic(ior: f64) -> Self {
+        Self {
+            base_color: Arc::new(SolidTexture::new(Vec3::ONE)),
+            roughness: Arc::new(SolidTexture::new(0.001)),
+            _anisotropic: 0.0,
             ior,
         }
     }
@@ -44,7 +67,9 @@ impl BxDF for GlassBSDF {
     fn sample(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let view_dir = -ray.direction();
         let v = to_local(info.normal, view_dir);
-        let h = ggx::sample_microfacet_normal(v, self.roughness);
+
+        let roughness = self.roughness.value(info.u, info.v, &info.point);
+        let h = ggx::sample_microfacet_normal(v, roughness);
 
         let (eta_i, eta_o) = if info.front_face {
             (1.0, self.ior)
@@ -82,8 +107,8 @@ impl BxDF for GlassBSDF {
             -(l * eta_o + v * eta_i).normalize()
         };
 
-        let pdf_h =
-            ggx::G1(v, self.roughness) * v.dot(h).abs() * ggx::D(h, self.roughness) / v.z.abs();
+        let roughness = self.roughness.value(info.u, info.v, &info.point);
+        let pdf_h = ggx::G1(v, roughness) * v.dot(h).abs() * ggx::D(h, roughness) / v.z.abs();
 
         let f = self.dielectric_fresnel(v, h, eta_i, eta_o);
         let jacobian = if reflect {
@@ -116,10 +141,11 @@ impl BxDF for GlassBSDF {
         };
 
         // D term
-        let d = ggx::D(h, self.roughness);
+        let roughness = self.roughness.value(info.u, info.v, &info.point);
+        let d = ggx::D(h, roughness);
 
         // G term
-        let g = ggx::G(v, l, self.roughness);
+        let g = ggx::G(v, l, roughness);
 
         // F term
         let f = self.dielectric_fresnel(v, h, eta_i, eta_o);
@@ -141,7 +167,7 @@ impl BxDF for GlassBSDF {
 impl Material for GlassBSDF {
     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
         let Some(dir) = self.sample(ray, hit_info) else {
-            return (self.base_color, None);
+            return (Vec3::ONE, None);
         };
 
         // default slow impl
@@ -151,7 +177,14 @@ impl Material for GlassBSDF {
 
         // simplified faster impl
         let v = to_local(hit_info.normal, -ray.direction());
-        let brdf_weight = self.base_color * ggx::G1(v, self.roughness);
+
+        let base_color = self
+            .base_color
+            .value(hit_info.u, hit_info.v, &hit_info.point);
+        let roughness = self
+            .roughness
+            .value(hit_info.u, hit_info.v, &hit_info.point);
+        let brdf_weight = base_color * ggx::G1(v, roughness);
 
         let eps = EPS * dir.dot(hit_info.normal).signum();
         let next_ray = Ray::new(hit_info.point + eps * hit_info.normal, dir, ray.time());

@@ -50,7 +50,9 @@ impl BxDF for DiffuseBRDF {
 impl Material for DiffuseBRDF {
     /// optimized version combining sample, pdf, and eval
     fn scatter(&self, ray: &Ray, hit_info: &HitInfo) -> (Vec3, Option<Ray>) {
-        let color = self.base_color.value(hit_info.u, hit_info.v, &hit_info.point);
+        let color = self
+            .base_color
+            .value(hit_info.u, hit_info.v, &hit_info.point);
         let Some(dir) = self.sample(ray, hit_info) else {
             return (Vec3::ONE, None);
         };

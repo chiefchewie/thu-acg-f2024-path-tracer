@@ -2,11 +2,11 @@ use std::env;
 use std::sync::Arc;
 
 use path_tracer::{
-    bsdf::{diffuse::DiffuseBRDF, principled::PrincipledBSDF},
+    bsdf::{diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, principled::PrincipledBSDF},
     camera::Camera,
     hittable::{Quad, Sphere, World},
     light::PointLight,
-    material::{DiffuseLight, MaterialType, MixMaterial, Refractive, Specular},
+    material::{DiffuseLight, MaterialType, MixMaterial, Refractive},
     texture::{CheckerTexture, ImageTexture, SolidTexture},
     vec3::{random_vector, random_vector_range, Vec3},
 };
@@ -27,13 +27,13 @@ fn balls_scene() {
         mat_ground,
     ));
 
-    let mat1 = MaterialType::REFRACTIVE(Refractive::new(1.5));
+    let mat1 = MaterialType::REFRACTIVE(GlassBSDF::basic(1.5));
     world.add(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat1));
 
     let mat2 = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.4, 0.2, 0.1)));
     world.add(Sphere::new_still(1.0, Vec3::new(-4.0, 1.0, 0.0), mat2));
 
-    let mat3 = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.7, 0.6, 0.5), 0.0));
+    let mat3 = MaterialType::SPECULAR(MetalBRDF::from_rgb(Vec3::new(0.7, 0.6, 0.5), 0.0));
     world.add(Sphere::new_still(1.0, Vec3::new(4.0, 1.0, 0.0), mat3));
 
     let mut rng = rand::thread_rng();
@@ -47,9 +47,9 @@ fn balls_scene() {
                     MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(albedo))
                 } else if choose_mat < 0.95 {
                     let albedo = random_vector_range(0.5, 1.0);
-                    MaterialType::SPECULAR(Specular::from_rgb(albedo, 0.0))
+                    MaterialType::SPECULAR(MetalBRDF::from_rgb(albedo, 0.0))
                 } else {
-                    MaterialType::REFRACTIVE(Refractive::new(1.5))
+                    MaterialType::REFRACTIVE(GlassBSDF::basic(1.5))
                 };
                 if let MaterialType::DIFFUSE(_) = sphere_material {
                     let pos2 = center + Vec3::new(0.0, thread_rng().gen_range(0.0..0.5), 0.0);
@@ -98,7 +98,7 @@ fn earth_scene() {
     let mat2 = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.4, 0.2, 0.1)));
     world.add(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat2));
 
-    let mat3 = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.7, 0.6, 0.5), 0.5));
+    let mat3 = MaterialType::SPECULAR(MetalBRDF::from_rgb(Vec3::new(0.7, 0.6, 0.5), 0.5));
     world.add(Sphere::new_still(1.0, Vec3::new(4.0, 1.0, 0.0), mat3));
 
     let tex1 = SolidTexture::new(Vec3::new(0.9, 0.0, 0.1));
@@ -208,7 +208,7 @@ fn basic_light_scene() {
 
     // plasticy cermaicy material???
     let mat1a = DiffuseBRDF::from_rgb(Vec3::new(0.7, 0.9, 0.5));
-    let mat1b = Specular::from_rgb(Vec3::ONE, 0.1);
+    let mat1b = MetalBRDF::from_rgb(Vec3::ONE, 0.1);
     let mat1 = MaterialType::MIX(MixMaterial::new(0.05, Arc::new(mat1a), Arc::new(mat1b)));
     world.add(Sphere::new_still(2.0, Vec3::new(-4.0, 2.0, 0.0), mat1));
 
@@ -219,7 +219,7 @@ fn basic_light_scene() {
         mat_diffuse,
     ));
 
-    let mat_metal = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.8, 0.6, 0.2), 0.2));
+    let mat_metal = MaterialType::SPECULAR(MetalBRDF::from_rgb(Vec3::new(0.8, 0.6, 0.2), 0.2));
     world.add(Sphere::new_still(2.0, Vec3::new(4.0, 2.0, 0.0), mat_metal));
 
     let diffuse_light = MaterialType::LIGHT(DiffuseLight::from_rgb(Vec3::new(10.0, 10.0, 10.0)));
@@ -325,7 +325,7 @@ fn cornell_box_scene() {
     world.add(Sphere::new_still(
         135.0,
         Vec3::new(113.0, 170.0, 372.0),
-        MaterialType::SPECULAR(Specular::from_rgb(Vec3::ONE, 0.0)),
+        MaterialType::SPECULAR(MetalBRDF::from_rgb(Vec3::ONE, 0.0)),
     ));
 
     // world.add(Quad::new(
@@ -400,7 +400,7 @@ fn test_scene() {
         0.01,      // clearcoat_gloss,
     ));
     // let material_left = MaterialType::REFRACTIVE(Refractive::new(1.5));
-    let material_right = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.8, 0.1, 0.2), 0.3));
+    let material_right = MaterialType::SPECULAR(MetalBRDF::from_rgb(Vec3::new(0.8, 0.1, 0.2), 0.3));
 
     world.add(Sphere::new_still(
         100.0,
@@ -428,7 +428,7 @@ fn test_scene() {
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 500;
-    camera.samples_per_pixel = 100;
+    camera.samples_per_pixel = 1000;
     camera.max_depth = 20;
 
     camera.vfov = 90.0;
