@@ -2,11 +2,11 @@ use std::env;
 use std::sync::Arc;
 
 use path_tracer::{
-    bsdf::principled::PrincipledBSDF,
+    bsdf::{diffuse::DiffuseBRDF, principled::PrincipledBSDF},
     camera::Camera,
     hittable::{Quad, Sphere, World},
     light::PointLight,
-    material::{Diffuse, DiffuseLight, MaterialType, MixMaterial, Refractive, Specular},
+    material::{DiffuseLight, MaterialType, MixMaterial, Refractive, Specular},
     texture::{CheckerTexture, ImageTexture, SolidTexture},
     vec3::{random_vector, random_vector_range, Vec3},
 };
@@ -19,7 +19,7 @@ fn balls_scene() {
     let tex2 = SolidTexture::new(Vec3::new(0.9, 0.9, 0.9));
     let checker_tex = CheckerTexture::new(0.32, Arc::new(tex1), Arc::new(tex2));
 
-    let mat_ground = MaterialType::DIFFUSE(Diffuse::new(Arc::new(checker_tex)));
+    let mat_ground = MaterialType::DIFFUSE(DiffuseBRDF::new(Arc::new(checker_tex)));
 
     world.add(Sphere::new_still(
         1000.0,
@@ -30,7 +30,7 @@ fn balls_scene() {
     let mat1 = MaterialType::REFRACTIVE(Refractive::new(1.5));
     world.add(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat1));
 
-    let mat2 = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.4, 0.2, 0.1)));
+    let mat2 = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.4, 0.2, 0.1)));
     world.add(Sphere::new_still(1.0, Vec3::new(-4.0, 1.0, 0.0), mat2));
 
     let mat3 = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.7, 0.6, 0.5), 0.0));
@@ -44,7 +44,7 @@ fn balls_scene() {
             if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
                 let sphere_material = if choose_mat < 0.8 {
                     let albedo = random_vector() * random_vector();
-                    MaterialType::DIFFUSE(Diffuse::from_rgb(albedo))
+                    MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(albedo))
                 } else if choose_mat < 0.95 {
                     let albedo = random_vector_range(0.5, 1.0);
                     MaterialType::SPECULAR(Specular::from_rgb(albedo, 0.0))
@@ -88,14 +88,14 @@ fn earth_scene() {
     let mut world = World::new();
 
     let earth_texture = ImageTexture::new("earthmap.jpg");
-    let earth_surface = MaterialType::DIFFUSE(Diffuse::new(Arc::new(earth_texture)));
+    let earth_surface = MaterialType::DIFFUSE(DiffuseBRDF::new(Arc::new(earth_texture)));
     world.add(Sphere::new_still(
         1.0,
         Vec3::new(4.9, 1.0, 3.0),
         earth_surface,
     ));
 
-    let mat2 = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.4, 0.2, 0.1)));
+    let mat2 = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.4, 0.2, 0.1)));
     world.add(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat2));
 
     let mat3 = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.7, 0.6, 0.5), 0.5));
@@ -104,7 +104,7 @@ fn earth_scene() {
     let tex1 = SolidTexture::new(Vec3::new(0.9, 0.0, 0.1));
     let tex2 = SolidTexture::new(Vec3::new(0.9, 0.9, 0.9));
     let checker_tex = CheckerTexture::new(0.62, Arc::new(tex1), Arc::new(tex2));
-    let mat_ground = MaterialType::DIFFUSE(Diffuse::new(Arc::new(checker_tex)));
+    let mat_ground = MaterialType::DIFFUSE(DiffuseBRDF::new(Arc::new(checker_tex)));
     world.add(Sphere::new_still(
         1000.0,
         Vec3::new(0.0, -1000.0, 0.0),
@@ -135,11 +135,11 @@ fn earth_scene() {
 }
 
 fn quads_scene() {
-    let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(1.0, 0.2, 0.2)));
-    let green = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.2, 1.0, 0.2)));
-    let blue = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.2, 0.2, 1.0)));
-    let orange = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(1.0, 0.5, 0.0)));
-    let teal = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.2, 0.8, 0.8)));
+    let red = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(1.0, 0.2, 0.2)));
+    let green = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.2, 1.0, 0.2)));
+    let blue = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.2, 0.2, 1.0)));
+    let orange = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(1.0, 0.5, 0.0)));
+    let teal = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.2, 0.8, 0.8)));
 
     let mut world = World::new();
     world.add(Quad::new(
@@ -199,7 +199,7 @@ fn quads_scene() {
 fn basic_light_scene() {
     let mut world = World::new();
 
-    let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
+    let red = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
     world.add(Sphere::new_still(
         1000.0,
         Vec3::new(0.0, -1000.0, 0.0),
@@ -207,12 +207,12 @@ fn basic_light_scene() {
     ));
 
     // plasticy cermaicy material???
-    let mat1a = Diffuse::from_rgb(Vec3::new(0.7, 0.9, 0.5));
+    let mat1a = DiffuseBRDF::from_rgb(Vec3::new(0.7, 0.9, 0.5));
     let mat1b = Specular::from_rgb(Vec3::ONE, 0.1);
     let mat1 = MaterialType::MIX(MixMaterial::new(0.05, Arc::new(mat1a), Arc::new(mat1b)));
     world.add(Sphere::new_still(2.0, Vec3::new(-4.0, 2.0, 0.0), mat1));
 
-    let mat_diffuse = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::ONE));
+    let mat_diffuse = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::ONE));
     world.add(Sphere::new_still(
         2.0,
         Vec3::new(0.0, 2.0, 0.0),
@@ -261,9 +261,9 @@ fn basic_light_scene() {
 fn cornell_box_scene() {
     let mut world = World::new();
 
-    let red = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
-    let white = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.73, 0.73, 0.73)));
-    let green = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.12, 0.45, 0.15)));
+    let red = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
+    let white = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.73, 0.73, 0.73)));
+    let green = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.12, 0.45, 0.15)));
     let diffuse_light = MaterialType::LIGHT(DiffuseLight::from_rgb(Vec3::new(25.0, 25.0, 25.0)));
     world.add(Quad::new(
         Vec3::new(555.0, 0.0, 0.0),
@@ -302,19 +302,20 @@ fn cornell_box_scene() {
         white.clone(),
     ));
 
+    let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.65, 0.05, 0.05)));
     let mat = MaterialType::TEST(PrincipledBSDF::new(
-        Vec3::new(0.65, 0.05, 0.05), // base_color,
-        0.01,                        // metallic,
-        0.01,                        // roughness,
-        0.01,                        // subsurface,
-        0.91,                        // specular,
-        0.91,                        // specular_tint,
-        1.5,                         // ior,
-        0.01,                        // spec_trans,
-        0.91,                        // sheen,
-        0.91,                        // sheen_tint,
-        0.91,                        // clearcoat,
-        0.01,                        // clearcoat_gloss,
+        color_tex, // base_color,
+        0.01,      // metallic,
+        0.01,      // roughness,
+        0.01,      // subsurface,
+        0.91,      // specular,
+        0.91,      // specular_tint,
+        1.5,       // ior,
+        0.01,      // spec_trans,
+        0.91,      // sheen,
+        0.91,      // sheen_tint,
+        0.91,      // clearcoat,
+        0.01,      // clearcoat_gloss,
     ));
     world.add(Sphere::new_still(
         105.0,
@@ -374,24 +375,29 @@ fn cornell_box_scene() {
 
 fn test_scene() {
     let mut world = World::new();
-    let material_ground = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.8, 0.8, 0.0)));
-    let material_center = MaterialType::DIFFUSE(Diffuse::from_rgb(Vec3::new(0.1, 0.2, 0.5)));
+    let material_ground = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.8, 0.8, 0.0)));
+    let material_center = MaterialType::DIFFUSE(DiffuseBRDF::from_rgb(Vec3::new(0.1, 0.2, 0.5)));
     // let material_left = MaterialType::TEST(MetalBRDF::new(Vec3::new(0.8, 0.1, 0.2), 0.3));
     // let material_left = MaterialType::TEST(GlassBSDF::new(0.1, 1.5));
     // let material_left = MaterialType::TEST(ClearcoatBRDF::new(0.5));
+    let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.8, 0.2, 0.2)));
+
+    let tex1 = SolidTexture::new(Vec3::new(0.2, 0.3, 0.1));
+    let tex2 = SolidTexture::new(Vec3::new(0.9, 0.9, 0.9));
+    // let color_tex = Arc::new(CheckerTexture::new(0.32, Arc::new(tex1), Arc::new(tex2)));
     let material_left = MaterialType::TEST(PrincipledBSDF::new(
-        Vec3::new(0.8, 0.2, 0.2), // base_color,
-        0.00,                     // metallic,
-        0.01,                     // roughness,
-        0.01,                     // subsurface,
-        0.00,                     // specular,
-        0.01,                     // specular_tint,
-        1.5,                      // ior,
-        0.09,                     // spec_trans,
-        0.01,                     // sheen,
-        0.01,                     // sheen_tint,
-        0.01,                     // clearcoat,
-        0.01,                     // clearcoat_gloss,
+        color_tex, // base_color,
+        0.00,      // metallic,
+        0.91,      // roughness,
+        0.01,      // subsurface,
+        0.00,      // specular,
+        0.01,      // specular_tint,
+        1.5,       // ior,
+        0.09,      // spec_trans,
+        0.01,      // sheen,
+        0.01,      // sheen_tint,
+        0.01,      // clearcoat,
+        0.01,      // clearcoat_gloss,
     ));
     // let material_left = MaterialType::REFRACTIVE(Refractive::new(1.5));
     let material_right = MaterialType::SPECULAR(Specular::from_rgb(Vec3::new(0.8, 0.1, 0.2), 0.3));
@@ -421,7 +427,7 @@ fn test_scene() {
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
-    camera.image_width = 900;
+    camera.image_width = 500;
     camera.samples_per_pixel = 100;
     camera.max_depth = 20;
 
@@ -443,7 +449,7 @@ fn test_scene() {
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
 
-    let x = 2;
+    let x = 1;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),

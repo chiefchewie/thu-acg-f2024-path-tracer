@@ -1,11 +1,12 @@
-use std::f64::consts::PI;
+use std::{f64::consts::PI, sync::Arc};
 
 use glam::FloatExt;
 
-use crate::{hittable::HitInfo, material::Material, ray::Ray, vec3::Vec3};
+use crate::{hittable::HitInfo, material::Material, ray::Ray, texture::Texture, vec3::Vec3};
 
 use super::{
-    fresnel::{self, schlick_weight}, r0,
+    fresnel::{self, schlick_weight},
+    r0,
     sampling::{cosine_sample_hemisphere, ggx, gtr1, to_local, to_world},
     tint, BxDF, EPS,
 };
@@ -20,7 +21,7 @@ use super::{
 /// smooth glass
 /// rough glass
 pub struct PrincipledBSDF {
-    base_color: Vec3, // TODO replace with texture
+    base_color: Arc<dyn Texture<Vec3>>,
 
     metallic: f64,
     roughness: f64,
@@ -42,7 +43,7 @@ pub struct PrincipledBSDF {
 
 impl PrincipledBSDF {
     pub fn new(
-        base_color: Vec3,
+        base_color: Arc<dyn Texture<Vec3>>,
         metallic: f64,
         roughness: f64,
         subsurface: f64,
@@ -192,7 +193,7 @@ impl PrincipledBSDF {
 
     // note that the evals here do not include the cosine, only the final public one in
     // PrincipledBSFD::eval does
-    fn eval_diffuse(&self, v: Vec3, l: Vec3, h: Vec3) -> Vec3 {
+    fn eval_diffuse(&self, color: Vec3, v: Vec3, l: Vec3, h: Vec3) -> Vec3 {
         let l_dot_h = l.dot(h);
         let rr = 2.0 * self.roughness * l_dot_h * l_dot_h;
 
@@ -208,7 +209,7 @@ impl PrincipledBSDF {
         let f_ss = 1.0.lerp(fss90, fl) * 1.0.lerp(fss90, fv);
         let ss = 1.25 * (f_ss * (1.0 / (l.z + v.z) - 0.5) + 0.5);
 
-        self.base_color / PI * (f_d + f_retro).lerp(ss, self.subsurface)
+        color / PI * (f_d + f_retro).lerp(ss, self.subsurface)
     }
 
     fn eval_specular(&self, fresnel: Vec3, v: Vec3, l: Vec3, h: Vec3) -> Vec3 {
@@ -314,6 +315,7 @@ impl BxDF for PrincipledBSDF {
     }
 
     fn eval(&self, view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> Vec3 {
+        let base_color = self.base_color.value(info.u, info.v, &info.point);
         let (diffuse_wt, specular_wt, glass_wt, clearcoat_wt) = self.lobe_weights();
         let (diffuse_p, specular_p, glass_p, clearcoat_p) =
             self.lobe_probabilities(diffuse_wt, specular_wt, glass_wt, clearcoat_wt);
@@ -336,16 +338,16 @@ impl BxDF for PrincipledBSDF {
 
         let mut brdf = Vec3::ZERO;
         if diffuse_p > 0.0 && reflect {
-            let c_tint = tint(self.base_color);
+            let c_tint = tint(base_color);
             let c_sheen = Vec3::ONE.lerp(c_tint, self.sheen_tint);
             let sheen_term = self.sheen * c_sheen * schlick_weight(l.dot(h).abs());
-            let diffuse_term = self.eval_diffuse(v, l, h);
+            let diffuse_term = self.eval_diffuse(c_tint, v, l, h);
             brdf += diffuse_wt * (diffuse_term + sheen_term)
         }
         if specular_p > 0.0 && reflect {
-            let c_tint = tint(self.base_color);
+            let c_tint = tint(base_color);
             let ks = Vec3::ONE.lerp(c_tint, self.specular_tint);
-            let c0 = (self.specular * r0(eta_i / eta_o) * ks).lerp(self.base_color, self.metallic);
+            let c0 = (self.specular * r0(eta_i / eta_o) * ks).lerp(base_color, self.metallic);
 
             let metallic_fresnel = fresnel::schlick(c0, l.dot(h));
             let dielectric_fresnel = Vec3::splat(fresnel::dielectric(v, h, eta_i, eta_o));
@@ -359,7 +361,7 @@ impl BxDF for PrincipledBSDF {
         if clearcoat_p > 0.0 && reflect {
             brdf += clearcoat_wt * self.eval_clearcoat(v, l, h)
         }
-        
+
         brdf * l.z.abs()
     }
 }
@@ -379,4 +381,3 @@ impl Material for PrincipledBSDF {
         (brdf_weight, Some(next_ray))
     }
 }
-
