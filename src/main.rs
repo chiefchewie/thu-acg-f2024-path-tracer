@@ -2,7 +2,10 @@ use std::env;
 use std::sync::Arc;
 
 use path_tracer::{
-    bsdf::{diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, mix::MixBxDf, principled::PrincipledBSDF},
+    bsdf::{
+        diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, mix::MixBxDf,
+        principled::PrincipledBSDF,
+    },
     camera::Camera,
     hittable::{Quad, Sphere, World},
     light::PointLight,

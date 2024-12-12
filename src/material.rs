@@ -1,13 +1,14 @@
-use std::{f64::consts::PI, sync::Arc};
-
-use rand::{thread_rng, Rng};
+use std::sync::Arc;
 
 use crate::{
-    bsdf::{diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, mix::MixBxDf, principled::PrincipledBSDF},
+    bsdf::{
+        diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, mix::MixBxDf,
+        principled::PrincipledBSDF,
+    },
     hittable::hit_info::HitInfo,
     ray::Ray,
     texture::{SolidTexture, Texture},
-    vec3::{random_vector, Vec3},
+    vec3::Vec3,
 };
 
 pub trait Material: Send + Sync {
