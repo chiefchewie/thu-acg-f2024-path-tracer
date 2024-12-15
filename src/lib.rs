@@ -2,7 +2,6 @@ pub mod bsdf;
 pub mod camera;
 pub mod hittable;
 pub mod interval;
-pub mod light;
 pub mod material;
 pub mod ray;
 pub mod texture;

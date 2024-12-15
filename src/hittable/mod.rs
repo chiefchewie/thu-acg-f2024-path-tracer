@@ -25,6 +25,9 @@ pub use self::world::*;
 pub mod instance;
 pub use self::instance::*;
 
+pub mod light;
+pub use self::light::*;
+
 pub trait Hittable: Send + Sync {
     fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo>;
     fn bounding_box(&self) -> AABB;
