@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
-use crate::{interval::Interval, light::PointLight, ray::Ray, vec3::Vec3};
+use crate::{interval::Interval, ray::Ray, vec3::Vec3};
 
 use super::{BVHNode, HitInfo, Hittable, AABB, BVH};
 
 pub struct World {
     objects: Vec<Arc<dyn Hittable>>,
-    lights: Vec<PointLight>, // indices of light sources
-    emissive_objects: Vec<usize>,
+    lights: Vec<Arc<dyn Hittable>>, // indices of light sources
     bbox: AABB,
     bvh: Option<BVHNode>,
 }
@@ -17,25 +16,18 @@ impl World {
         World {
             objects: vec![],
             lights: vec![],
-            emissive_objects: vec![],
             bbox: AABB::default(),
             bvh: None,
         }
     }
 
-    pub fn add_point_light(&mut self, light: PointLight) {
-        self.lights.push(light);
+    pub fn add_light<T: Hittable + 'static>(&mut self, light: T) {
+        self.lights.push(Arc::new(light));
     }
 
     pub fn add<T: Hittable + 'static>(&mut self, obj: T) {
         self.bbox = AABB::union(self.bbox, obj.bounding_box());
-        let rc = Arc::new(obj);
-        if let Some(ref mat) = rc.material() {
-            if mat.is_emissive() {
-                self.emissive_objects.push(self.objects.len());
-            }
-        }
-        self.objects.push(rc.clone());
+        self.objects.push(Arc::new(obj));
     }
 
     pub fn build_bvh(&mut self) {
@@ -49,17 +41,8 @@ impl World {
             .is_none()
     }
 
-    pub fn get_lights(&self) -> &Vec<PointLight> {
+    pub fn get_lights(&self) -> &Vec<Arc<dyn Hittable>> {
         &self.lights
-    }
-
-    pub fn sample_emissive_objs(&self) -> Option<&Arc<dyn Hittable>> {
-        if self.emissive_objects.is_empty() {
-            None
-        } else {
-            let idx = rand::random::<usize>() % self.emissive_objects.len();
-            Some(&self.objects[self.emissive_objects[idx]])
-        }
     }
 }
 
