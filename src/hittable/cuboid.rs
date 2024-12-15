@@ -1,15 +1,15 @@
 use crate::{bsdf::MatPtr, vec3::Vec3};
 
-use super::{Hittable, Quad, World};
+use super::{Hittable, HittableList, Quad};
 
 pub struct Cuboid {
-    sides: World,
+    sides: HittableList,
     material: MatPtr,
 }
 
 impl Cuboid {
     pub fn new(a: Vec3, b: Vec3, mat: MatPtr) -> Cuboid {
-        let mut sides = World::new();
+        let mut sides = HittableList::new();
         let min = a.min(b);
         let max = a.max(b);
         let dx = Vec3::ZERO.with_x(max.x - min.x);

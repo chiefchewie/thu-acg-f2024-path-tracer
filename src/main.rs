@@ -23,20 +23,20 @@ fn balls_scene() {
 
     let mat_ground = Arc::new(DiffuseBRDF::new(Arc::new(checker_tex)));
 
-    world.add(Sphere::new_still(
+    world.add_object(Sphere::new_still(
         1000.0,
         Vec3::new(0.0, -1000.0, 0.0),
         mat_ground,
     ));
 
     let mat1 = Arc::new(GlassBSDF::basic(1.5));
-    world.add(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat1));
+    world.add_object(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat1));
 
     let mat2 = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.4, 0.2, 0.1)));
-    world.add(Sphere::new_still(1.0, Vec3::new(-4.0, 1.0, 0.0), mat2));
+    world.add_object(Sphere::new_still(1.0, Vec3::new(-4.0, 1.0, 0.0), mat2));
 
     let mat3 = Arc::new(MetalBRDF::from_rgb(Vec3::new(0.7, 0.6, 0.5), 0.0));
-    world.add(Sphere::new_still(1.0, Vec3::new(4.0, 1.0, 0.0), mat3));
+    world.add_object(Sphere::new_still(1.0, Vec3::new(4.0, 1.0, 0.0), mat3));
 
     let mut rng = rand::thread_rng();
     for a in (-11..11).map(|x| x as f64) {
@@ -48,14 +48,14 @@ fn balls_scene() {
                     let albedo = random_vector() * random_vector();
                     let sphere_mat = Arc::new(DiffuseBRDF::from_rgb(albedo));
                     let pos2 = center + Vec3::new(0.0, thread_rng().gen_range(0.0..0.5), 0.0);
-                    world.add(Sphere::new_moving(0.2, center, pos2, sphere_mat));
+                    world.add_object(Sphere::new_moving(0.2, center, pos2, sphere_mat));
                 } else if choose_mat < 0.95 {
                     let albedo = random_vector_range(0.5, 1.0);
                     let sphere_mat = Arc::new(MetalBRDF::from_rgb(albedo, 0.0));
-                    world.add(Sphere::new_still(0.2, center, sphere_mat));
+                    world.add_object(Sphere::new_still(0.2, center, sphere_mat));
                 } else {
                     let sphere_mat = Arc::new(GlassBSDF::basic(1.5));
-                    world.add(Sphere::new_still(0.2, center, sphere_mat));
+                    world.add_object(Sphere::new_still(0.2, center, sphere_mat));
                 };
             }
         }
@@ -89,23 +89,23 @@ fn earth_scene() {
 
     let earth_texture = ImageTexture::new("earthmap.jpg");
     let earth_surface = Arc::new(DiffuseBRDF::new(Arc::new(earth_texture)));
-    world.add(Sphere::new_still(
+    world.add_object(Sphere::new_still(
         1.0,
         Vec3::new(4.9, 1.0, 3.0),
         earth_surface,
     ));
 
     let mat2 = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.4, 0.2, 0.1)));
-    world.add(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat2));
+    world.add_object(Sphere::new_still(1.0, Vec3::new(0.0, 1.0, 0.0), mat2));
 
     let mat3 = Arc::new(MetalBRDF::from_rgb(Vec3::new(0.7, 0.6, 0.5), 0.5));
-    world.add(Sphere::new_still(1.0, Vec3::new(4.0, 1.0, 0.0), mat3));
+    world.add_object(Sphere::new_still(1.0, Vec3::new(4.0, 1.0, 0.0), mat3));
 
     let tex1 = SolidTexture::new(Vec3::new(0.9, 0.0, 0.1));
     let tex2 = SolidTexture::new(Vec3::new(0.9, 0.9, 0.9));
     let checker_tex = CheckerTexture::new(0.62, Arc::new(tex1), Arc::new(tex2));
     let mat_ground = Arc::new(DiffuseBRDF::new(Arc::new(checker_tex)));
-    world.add(Sphere::new_still(
+    world.add_object(Sphere::new_still(
         1000.0,
         Vec3::new(0.0, -1000.0, 0.0),
         mat_ground,
@@ -142,31 +142,31 @@ fn quads_scene() {
     let teal = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.2, 0.8, 0.8)));
 
     let mut world = World::new();
-    world.add(Quad::new(
+    world.add_object(Quad::new(
         Vec3::new(-3.0, -2.0, 5.0),
         Vec3::new(0.0, 0.0, -4.0),
         Vec3::new(0.0, 4.0, 0.0),
         red,
     ));
-    world.add(Quad::new(
+    world.add_object(Quad::new(
         Vec3::new(-2.0, -2.0, 0.0),
         Vec3::new(4.0, 0.0, 0.0),
         Vec3::new(0.0, 4.0, 0.0),
         green,
     ));
-    world.add(Quad::new(
+    world.add_object(Quad::new(
         Vec3::new(3.0, -2.0, 1.0),
         Vec3::new(0.0, 0.0, 4.0),
         Vec3::new(0.0, 4.0, 0.0),
         blue,
     ));
-    world.add(Quad::new(
+    world.add_object(Quad::new(
         Vec3::new(-2.0, 3.0, 1.0),
         Vec3::new(4.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, 4.0),
         orange,
     ));
-    world.add(Quad::new(
+    world.add_object(Quad::new(
         Vec3::new(-2.0, -3.0, 5.0),
         Vec3::new(4.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -4.0),
@@ -200,7 +200,7 @@ fn basic_light_scene() {
     let mut world = World::new();
 
     let red = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
-    world.add(Sphere::new_still(
+    world.add_object(Sphere::new_still(
         1000.0,
         Vec3::new(0.0, -1000.0, 0.0),
         red.clone(),
@@ -211,20 +211,20 @@ fn basic_light_scene() {
     let mat1b = MetalBRDF::from_rgb(Vec3::ONE, 0.1);
     // let mat1 = Arc::new(MixMaterial::new(0.05, Arc::new(mat1a), Arc::new(mat1b)));
     let mat1 = Arc::new(MixBxDf::new(0.05, Arc::new(mat1a), Arc::new(mat1b)));
-    world.add(Sphere::new_still(2.0, Vec3::new(-4.0, 2.0, 0.0), mat1));
+    world.add_object(Sphere::new_still(2.0, Vec3::new(-4.0, 2.0, 0.0), mat1));
 
     let mat_diffuse = Arc::new(DiffuseBRDF::from_rgb(Vec3::ONE));
-    world.add(Sphere::new_still(
+    world.add_object(Sphere::new_still(
         2.0,
         Vec3::new(0.0, 2.0, 0.0),
         mat_diffuse,
     ));
 
     let mat_metal = Arc::new(MetalBRDF::from_rgb(Vec3::new(0.8, 0.6, 0.2), 0.2));
-    world.add(Sphere::new_still(2.0, Vec3::new(4.0, 2.0, 0.0), mat_metal));
+    world.add_object(Sphere::new_still(2.0, Vec3::new(4.0, 2.0, 0.0), mat_metal));
 
     let diffuse_light = Arc::new(DiffuseLight::from_rgb(Vec3::new(10.0, 10.0, 10.0)));
-    world.add(Quad::new(
+    world.add_object(Quad::new(
         Vec3::new(-2.0, 6.5, 0.0),
         Vec3::new(4.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, 2.0),
@@ -266,37 +266,37 @@ fn cornell_box_scene() {
     let white = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.73, 0.73, 0.73)));
     let green = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.12, 0.45, 0.15)));
     let diffuse_light = Arc::new(DiffuseLight::from_rgb(Vec3::new(25.0, 25.0, 25.0)));
-    world.add(Quad::new(
+    world.add_object(Quad::new(
         Vec3::new(555.0, 0.0, 0.0),
         Vec3::new(0.0, 555.0, 0.0),
         Vec3::new(0.0, 0.0, 555.0),
         green,
     ));
-    world.add(Quad::new(
+    world.add_object(Quad::new(
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 555.0, 0.0),
         Vec3::new(0.0, 0.0, 555.0),
         red,
     ));
-    world.add(Quad::new(
+    world.add_object(Quad::new(
         Vec3::new(343.0, 554.0, 332.0),
         Vec3::new(-130.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -105.0),
         diffuse_light,
     ));
-    world.add(Quad::new(
+    world.add_object(Quad::new(
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(555.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, 555.0),
         white.clone(),
     ));
-    world.add(Quad::new(
+    world.add_object(Quad::new(
         Vec3::new(555.0, 555.0, 555.0),
         Vec3::new(-555.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -555.0),
         white.clone(),
     ));
-    world.add(Quad::new(
+    world.add_object(Quad::new(
         Vec3::new(0.0, 0.0, 555.0),
         Vec3::new(555.0, 0.0, 0.0),
         Vec3::new(0.0, 555.0, 0.0),
@@ -318,12 +318,12 @@ fn cornell_box_scene() {
         0.91,      // clearcoat,
         0.01,      // clearcoat_gloss,
     ));
-    world.add(Sphere::new_still(
+    world.add_object(Sphere::new_still(
         105.0,
         Vec3::new(413.0, 170.0, 372.0),
         mat,
     ));
-    world.add(Sphere::new_still(
+    world.add_object(Sphere::new_still(
         135.0,
         Vec3::new(113.0, 170.0, 372.0),
         Arc::new(MetalBRDF::from_rgb(Vec3::ONE, 0.0)),
@@ -403,22 +403,22 @@ fn test_scene() {
     // let material_left = Arc::new(Refractive::new(1.5));
     let material_right = Arc::new(MetalBRDF::from_rgb(Vec3::new(0.8, 0.1, 0.2), 0.3));
 
-    world.add(Sphere::new_still(
+    world.add_object(Sphere::new_still(
         100.0,
         Vec3::new(0.0, -100.5, -1.0),
         material_ground,
     ));
-    world.add(Sphere::new_still(
+    world.add_object(Sphere::new_still(
         0.5,
         Vec3::new(0.0, 0.0, -1.2),
         material_center,
     ));
-    world.add(Sphere::new_still(
+    world.add_object(Sphere::new_still(
         0.5,
         Vec3::new(-1.0, 0.0, -1.0),
         material_left,
     ));
-    world.add(Sphere::new_still(
+    world.add_object(Sphere::new_still(
         0.5,
         Vec3::new(1.0, 0.0, -1.0),
         material_right,
