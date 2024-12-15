@@ -7,6 +7,7 @@ use super::{BVHNode, HitInfo, Hittable, AABB, BVH};
 pub struct World {
     objects: Vec<Arc<dyn Hittable>>,
     lights: Vec<PointLight>, // indices of light sources
+    emissive_objects: Vec<usize>,
     bbox: AABB,
     bvh: Option<BVHNode>,
 }
@@ -16,6 +17,7 @@ impl World {
         World {
             objects: vec![],
             lights: vec![],
+            emissive_objects: vec![],
             bbox: AABB::default(),
             bvh: None,
         }
@@ -28,6 +30,11 @@ impl World {
     pub fn add<T: Hittable + 'static>(&mut self, obj: T) {
         self.bbox = AABB::union(self.bbox, obj.bounding_box());
         let rc = Arc::new(obj);
+        if let Some(ref mat) = rc.material() {
+            if mat.is_emissive() {
+                self.emissive_objects.push(self.objects.len());
+            }
+        }
         self.objects.push(rc.clone());
     }
 
@@ -44,6 +51,15 @@ impl World {
 
     pub fn get_lights(&self) -> &Vec<PointLight> {
         &self.lights
+    }
+
+    pub fn sample_emissive_objs(&self) -> Option<&Arc<dyn Hittable>> {
+        if self.emissive_objects.is_empty() {
+            None
+        } else {
+            let idx = rand::random::<usize>() % self.emissive_objects.len();
+            Some(&self.objects[self.emissive_objects[idx]])
+        }
     }
 }
 
@@ -74,5 +90,9 @@ impl Hittable for World {
 
     fn bounding_box(&self) -> AABB {
         self.bbox
+    }
+
+    fn material(&self) -> Option<&dyn crate::bsdf::BxDFMaterial> {
+        None
     }
 }

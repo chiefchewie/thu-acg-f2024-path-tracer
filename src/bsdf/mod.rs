@@ -41,6 +41,10 @@ pub trait BxDFMaterial: Send + Sync {
     fn emitted(&self, _u: f64, _v: f64, _p: Vec3) -> Vec3 {
         Vec3::ZERO
     }
+
+    fn is_emissive(&self) -> bool {
+        false
+    }
 }
 
 pub type MatPtr = Arc<dyn BxDFMaterial>;

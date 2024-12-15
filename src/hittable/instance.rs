@@ -54,4 +54,8 @@ impl Hittable for Instance {
     fn bounding_box(&self) -> AABB {
         self.bbox
     }
+
+    fn material(&self) -> Option<&dyn crate::bsdf::BxDFMaterial> {
+        self.object.material()
+    }
 }

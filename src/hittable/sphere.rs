@@ -102,4 +102,8 @@ impl Hittable for Sphere {
     fn bounding_box(&self) -> AABB {
         self.bbox
     }
+
+    fn material(&self) -> Option<&dyn crate::bsdf::BxDFMaterial> {
+        Some(self.material.as_ref())
+    }
 }

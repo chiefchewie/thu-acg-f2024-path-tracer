@@ -1,4 +1,4 @@
-use crate::{hittable::HitInfo, interval::Interval, ray::Ray};
+use crate::{bsdf::BxDFMaterial, hittable::HitInfo, interval::Interval, ray::Ray};
 use std::{cmp::Ordering, sync::Arc};
 
 use super::{Hittable, AABB};
@@ -138,5 +138,9 @@ impl Hittable for BVHNode {
             BVHNode::Leaf { bbox, .. } => *bbox,
             BVHNode::Internal { bbox, .. } => *bbox,
         }
+    }
+
+    fn material(&self) -> Option<&dyn BxDFMaterial> {
+        None
     }
 }

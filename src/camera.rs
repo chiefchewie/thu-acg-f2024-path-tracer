@@ -172,17 +172,17 @@ impl Camera {
             };
 
             // TODO figure this out for real (MULTIPLE IMPORTANCE SAMPLING)
-            for light in world.get_lights() {
-                let result = world.shadow_ray(hit_info.point, light.position, ray.time());
-                if result {
-                    let light_dir = (light.position - hit_info.point).normalize();
-                    let len = (light.position - hit_info.point).length();
-                    let color = (light.power / (len * len))
-                        * hit_info.mat.eval(-ray.direction(), light_dir, &hit_info)
-                        / hit_info.mat.pdf(-ray.direction(), light_dir, &hit_info);
-                    radiance += throughput * color;
-                }
-            }
+            // for light in world.get_lights() {
+            //     let result = world.shadow_ray(hit_info.point, light.position, ray.time());
+            //     if result {
+            //         let light_dir = (light.position - hit_info.point).normalize();
+            //         let len = (light.position - hit_info.point).length();
+            //         let color = (light.power / (len * len))
+            //             * hit_info.mat.eval(-ray.direction(), light_dir, &hit_info)
+            //             / hit_info.mat.pdf(-ray.direction(), light_dir, &hit_info);
+            //         radiance += throughput * color;
+            //     }
+            // }
 
             let emission = hit_info.mat.emitted(hit_info.u, hit_info.v, hit_info.point);
             radiance += emission * throughput;

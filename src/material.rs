@@ -184,6 +184,10 @@ impl BxDFMaterial for DiffuseLight {
     fn emitted(&self, u: f64, v: f64, p: Vec3) -> Vec3 {
         self.emission.value(u, v, &p)
     }
+
+    fn is_emissive(&self) -> bool {
+        true
+    }
 }
 
 // #[derive(Clone)]

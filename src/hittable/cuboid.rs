@@ -4,6 +4,7 @@ use super::{Hittable, Quad, World};
 
 pub struct Cuboid {
     sides: World,
+    material: MatPtr,
 }
 
 impl Cuboid {
@@ -50,7 +51,10 @@ impl Cuboid {
             dz,
             mat.clone(),
         )); // bottom
-        Cuboid { sides }
+        Cuboid {
+            sides,
+            material: mat,
+        }
     }
 }
 
@@ -65,5 +69,9 @@ impl Hittable for Cuboid {
 
     fn bounding_box(&self) -> super::AABB {
         self.sides.bounding_box()
+    }
+
+    fn material(&self) -> Option<&dyn crate::bsdf::BxDFMaterial> {
+        Some(self.material.as_ref())
     }
 }
