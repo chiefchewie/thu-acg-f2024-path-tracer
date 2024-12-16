@@ -61,3 +61,9 @@ impl Hittable for HittableList {
         None
     }
 }
+
+impl Default for HittableList {
+    fn default() -> Self {
+        Self::new()
+    }
+}

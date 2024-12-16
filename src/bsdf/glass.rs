@@ -65,7 +65,7 @@ impl GlassBSDF {
 impl BxDFMaterial for GlassBSDF {
     fn sample(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let view_dir = -ray.direction();
-        let v = to_local(info.normal, view_dir);
+        let v = to_local(info.geometric_normal, view_dir);
 
         let roughness = self.roughness.value(info.u, info.v, &info.point);
         let h = ggx::sample_microfacet_normal(v, roughness);
@@ -79,19 +79,19 @@ impl BxDFMaterial for GlassBSDF {
         let f = self.dielectric_fresnel(v, h, eta_i, eta_o);
         if thread_rng().gen::<f64>() < f {
             let r = (-v).reflect(h);
-            Some(to_world(info.normal, r))
+            Some(to_world(info.geometric_normal, r))
         } else {
             let mut t = (-v).refract(h, eta_i / eta_o);
             if t == Vec3::ZERO {
                 t = (-v).reflect(h);
             }
-            Some(to_world(info.normal, t))
+            Some(to_world(info.geometric_normal, t))
         }
     }
 
     fn pdf(&self, view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> f64 {
-        let v = to_local(info.normal, view_dir);
-        let l = to_local(info.normal, light_dir);
+        let v = to_local(info.geometric_normal, view_dir);
+        let l = to_local(info.geometric_normal, light_dir);
         let reflect = l.z * v.z > 0.0;
 
         let (eta_i, eta_o) = if info.front_face {
@@ -123,8 +123,8 @@ impl BxDFMaterial for GlassBSDF {
     }
 
     fn eval(&self, view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> Vec3 {
-        let v = to_local(info.normal, view_dir);
-        let l = to_local(info.normal, light_dir);
+        let v = to_local(info.geometric_normal, view_dir);
+        let l = to_local(info.geometric_normal, light_dir);
         let reflect = l.z * v.z > 0.0;
 
         let (eta_i, eta_o) = if info.front_face {
@@ -166,7 +166,7 @@ impl BxDFMaterial for GlassBSDF {
         let dir = self.sample(ray, hit_info)?;
 
         // simplified faster impl
-        let v = to_local(hit_info.normal, -ray.direction());
+        let v = to_local(hit_info.geometric_normal, -ray.direction());
 
         let base_color = self
             .base_color
@@ -176,8 +176,12 @@ impl BxDFMaterial for GlassBSDF {
             .value(hit_info.u, hit_info.v, &hit_info.point);
         let brdf_weight = base_color * ggx::G1(v, roughness);
 
-        let eps = EPS * dir.dot(hit_info.normal).signum();
-        let next_ray = Ray::new(hit_info.point + eps * hit_info.normal, dir, ray.time());
+        let eps = EPS * dir.dot(hit_info.geometric_normal).signum();
+        let next_ray = Ray::new(
+            hit_info.point + eps * hit_info.geometric_normal,
+            dir,
+            ray.time(),
+        );
         Some((brdf_weight, next_ray))
     }
 }

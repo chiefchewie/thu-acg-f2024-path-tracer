@@ -177,7 +177,8 @@ impl Camera {
             // light_dir, light_pdf,
             // then this material may also scatter the incoming ray resulting in
             // scatter_dir, scatter_pdf
-            // we should select one of light_dir, scatter_dir based on some probability (how so?)
+            // we should select one of light_dir, scatter_dir based on some probability (how so? 50/50 split?)
+            //     or some heuristic
             // and evaluate the the mixed brdf/pdf for the seleced direction
 
             let emission = hit_info.mat.emitted(hit_info.u, hit_info.v, hit_info.point);

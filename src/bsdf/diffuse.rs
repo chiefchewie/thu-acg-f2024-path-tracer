@@ -31,17 +31,17 @@ impl DiffuseBRDF {
 impl BxDFMaterial for DiffuseBRDF {
     fn sample(&self, _ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let diffuse_dir_local = cosine_sample_hemisphere();
-        Some(to_world(info.normal, diffuse_dir_local))
+        Some(to_world(info.geometric_normal, diffuse_dir_local))
     }
 
     fn pdf(&self, _view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> f64 {
-        let l = to_local(info.normal, light_dir);
+        let l = to_local(info.geometric_normal, light_dir);
         l.z.abs() / PI
     }
 
     fn eval(&self, _view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> Vec3 {
         let color = self.base_color.value(info.u, info.v, &info.point);
-        let l = to_local(info.normal, light_dir);
+        let l = to_local(info.geometric_normal, light_dir);
         l.z.abs() * (color / PI)
     }
 
@@ -51,7 +51,11 @@ impl BxDFMaterial for DiffuseBRDF {
             .base_color
             .value(hit_info.u, hit_info.v, &hit_info.point);
         let dir = self.sample(ray, hit_info)?;
-        let next_ray = Ray::new(hit_info.point + EPS * hit_info.normal, dir, ray.time());
+        let next_ray = Ray::new(
+            hit_info.point + EPS * hit_info.geometric_normal,
+            dir,
+            ray.time(),
+        );
         Some((color, next_ray))
     }
 }

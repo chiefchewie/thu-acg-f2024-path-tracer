@@ -33,8 +33,12 @@ pub trait BxDFMaterial: Send + Sync {
         let pdf = self.pdf(-ray.direction(), dir, hit_info);
         let brdf = self.eval(-ray.direction(), dir, hit_info);
         let brdf_weight = brdf / pdf;
-        let eps = EPS * dir.dot(hit_info.normal).signum();
-        let next_ray = Ray::new(hit_info.point + eps * hit_info.normal, dir, ray.time());
+        let eps = EPS * dir.dot(hit_info.geometric_normal).signum();
+        let next_ray = Ray::new(
+            hit_info.point + eps * hit_info.geometric_normal,
+            dir,
+            ray.time(),
+        );
         Some((brdf_weight, next_ray))
     }
 

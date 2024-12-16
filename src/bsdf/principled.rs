@@ -100,17 +100,17 @@ impl PrincipledBSDF {
     }
 
     fn sample_diffuse(&self, info: &HitInfo) -> Option<Vec3> {
-        Some(to_world(info.normal, cosine_sample_hemisphere()))
+        Some(to_world(info.geometric_normal, cosine_sample_hemisphere()))
     }
 
     fn sample_specular(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let view_dir = -ray.direction();
-        let v = to_local(info.normal, view_dir);
+        let v = to_local(info.geometric_normal, view_dir);
         let h = ggx::sample_microfacet_normal(v, self.roughness);
         let specular_dir_local = (-v).reflect(h);
-        let specular_dir = to_world(info.normal, specular_dir_local);
+        let specular_dir = to_world(info.geometric_normal, specular_dir_local);
 
-        if specular_dir.dot(info.normal) <= 0.0 {
+        if specular_dir.dot(info.geometric_normal) <= 0.0 {
             None
         } else {
             Some(specular_dir)
@@ -119,7 +119,7 @@ impl PrincipledBSDF {
 
     fn sample_glass(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let view_dir = -ray.direction();
-        let v = to_local(info.normal, view_dir);
+        let v = to_local(info.geometric_normal, view_dir);
         let h = ggx::sample_microfacet_normal(v, self.roughness);
 
         let (eta_i, eta_o) = if info.front_face {
@@ -131,23 +131,23 @@ impl PrincipledBSDF {
         let f = fresnel::dielectric(v, h, eta_i, eta_o);
         if rand::random::<f64>() < f {
             let r = (-v).reflect(h);
-            Some(to_world(info.normal, r))
+            Some(to_world(info.geometric_normal, r))
         } else {
             let mut t = (-v).refract(h, eta_i / eta_o);
             if t == Vec3::ZERO {
                 t = (-v).reflect(h);
             }
-            Some(to_world(info.normal, t))
+            Some(to_world(info.geometric_normal, t))
         }
     }
 
     fn sample_clearcoat(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let view_dir = -ray.direction();
-        let v = to_local(info.normal, view_dir);
+        let v = to_local(info.geometric_normal, view_dir);
         let h = gtr1::sample_microfacet_normal(0.25);
         let specular_dir_local = (-v).reflect(h);
-        let specular_dir = to_world(info.normal, specular_dir_local);
-        if specular_dir.dot(info.normal) <= 0.0 {
+        let specular_dir = to_world(info.geometric_normal, specular_dir_local);
+        if specular_dir.dot(info.geometric_normal) <= 0.0 {
             None
         } else {
             Some(specular_dir)
@@ -281,8 +281,8 @@ impl BxDFMaterial for PrincipledBSDF {
         let (diffuse_p, specular_p, glass_p, clearcoat_p) =
             self.lobe_probabilities(diffuse_wt, specular_wt, glass_wt, clearcoat_wt);
 
-        let v = to_local(info.normal, view_dir);
-        let l = to_local(info.normal, light_dir);
+        let v = to_local(info.geometric_normal, view_dir);
+        let l = to_local(info.geometric_normal, light_dir);
 
         let reflect = l.z * v.z > 0.0;
         let (eta_i, eta_o) = if info.front_face {
@@ -320,8 +320,8 @@ impl BxDFMaterial for PrincipledBSDF {
         let (diffuse_p, specular_p, glass_p, clearcoat_p) =
             self.lobe_probabilities(diffuse_wt, specular_wt, glass_wt, clearcoat_wt);
 
-        let v = to_local(info.normal, view_dir);
-        let l = to_local(info.normal, light_dir);
+        let v = to_local(info.geometric_normal, view_dir);
+        let l = to_local(info.geometric_normal, light_dir);
 
         let reflect = l.z * v.z > 0.0;
         let (eta_i, eta_o) = if info.front_face {

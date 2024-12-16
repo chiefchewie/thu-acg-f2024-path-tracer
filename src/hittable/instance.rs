@@ -43,10 +43,12 @@ impl Hittable for Instance {
         // transform hit collision back to world coordinates
         let world_point = self.transform.transform_point3(info.point);
         let normal_mat = Mat4::from_quat(self.rotation).inverse().transpose();
-        let world_normal = normal_mat.transform_vector3(info.normal).normalize();
+        let world_normal = normal_mat
+            .transform_vector3(info.geometric_normal)
+            .normalize();
         Some(HitInfo {
             point: world_point,
-            normal: world_normal,
+            geometric_normal: world_normal,
             ..info
         })
     }

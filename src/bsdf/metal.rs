@@ -38,15 +38,15 @@ impl MetalBRDF {
 impl BxDFMaterial for MetalBRDF {
     fn sample(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let view_dir = -ray.direction();
-        let v = to_local(info.normal, view_dir);
+        let v = to_local(info.geometric_normal, view_dir);
 
         let roughness = self.roughness.value(info.u, info.v, &info.point);
         let h = ggx::sample_microfacet_normal(v, roughness);
 
         let specular_dir_local = (-v).reflect(h);
-        let specular_dir = to_world(info.normal, specular_dir_local);
+        let specular_dir = to_world(info.geometric_normal, specular_dir_local);
 
-        if specular_dir.dot(info.normal) <= 0.0 {
+        if specular_dir.dot(info.geometric_normal) <= 0.0 {
             None
         } else {
             Some(specular_dir)
@@ -54,8 +54,8 @@ impl BxDFMaterial for MetalBRDF {
     }
 
     fn pdf(&self, view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> f64 {
-        let v = to_local(info.normal, view_dir);
-        let l = to_local(info.normal, light_dir);
+        let v = to_local(info.geometric_normal, view_dir);
+        let l = to_local(info.geometric_normal, light_dir);
         let h = (v + l).normalize();
 
         let roughness = self.roughness.value(info.u, info.v, &info.point);
@@ -67,8 +67,8 @@ impl BxDFMaterial for MetalBRDF {
     }
 
     fn eval(&self, view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> Vec3 {
-        let v = to_local(info.normal, view_dir);
-        let l = to_local(info.normal, light_dir);
+        let v = to_local(info.geometric_normal, view_dir);
+        let l = to_local(info.geometric_normal, light_dir);
         let h = (v + l).normalize();
 
         let roughness = self.roughness.value(info.u, info.v, &info.point);
@@ -89,8 +89,8 @@ impl BxDFMaterial for MetalBRDF {
         let base_color = self
             .base_color
             .value(hit_info.u, hit_info.v, &hit_info.point);
-        let v = to_local(hit_info.normal, -ray.direction());
-        let l = to_local(hit_info.normal, dir);
+        let v = to_local(hit_info.geometric_normal, -ray.direction());
+        let l = to_local(hit_info.geometric_normal, dir);
         let h = (v + l).normalize();
         let g = ggx::G(v, l, roughness);
 
@@ -99,7 +99,11 @@ impl BxDFMaterial for MetalBRDF {
         let f = schlick_fresnel(base_color, l.dot(h));
         let brdf_weight = f * v.dot(h).abs() * g / (v.z.abs() * h.z.abs());
 
-        let next_ray = Ray::new(hit_info.point + EPS * hit_info.normal, dir, ray.time());
+        let next_ray = Ray::new(
+            hit_info.point + EPS * hit_info.geometric_normal,
+            dir,
+            ray.time(),
+        );
         Some((brdf_weight, next_ray))
     }
 }
