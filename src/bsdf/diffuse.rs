@@ -5,7 +5,7 @@ use super::{
 use crate::{
     hittable::HitInfo,
     ray::Ray,
-    texture::{SolidTexture, Texture},
+    texture::{ImageTexture, SolidTexture, Texture},
     vec3::Vec3,
 };
 use std::{f64::consts::PI, sync::Arc};
@@ -13,17 +13,40 @@ use std::{f64::consts::PI, sync::Arc};
 #[derive(Clone)]
 pub struct DiffuseBRDF {
     base_color: Arc<dyn Texture<Vec3>>,
+    normal_map: Option<Arc<ImageTexture>>,
 }
 
 // Lambertian diffuse, NOT the one used in PrincipledBSDF
 impl DiffuseBRDF {
     pub fn new(base_color: Arc<dyn Texture<Vec3>>) -> Self {
-        Self { base_color }
+        Self {
+            base_color,
+            normal_map: None,
+        }
     }
 
     pub fn from_rgb(base_color: Vec3) -> Self {
         Self {
             base_color: Arc::new(SolidTexture::new(base_color)),
+            normal_map: None,
+        }
+    }
+
+    pub fn with_normal(base_color: Vec3, normal_map: ImageTexture) -> Self {
+        Self {
+            base_color: Arc::new(SolidTexture::new(base_color)),
+            normal_map: Some(Arc::new(normal_map)),
+        }
+    }
+
+    pub fn from_textures(color_texture: ImageTexture, normal_map: Option<ImageTexture>) -> Self {
+        Self {
+            base_color: Arc::new(color_texture),
+            normal_map: if let Some(map) = normal_map {
+                Some(Arc::new(map))
+            } else {
+                None
+            },
         }
     }
 }
@@ -31,7 +54,8 @@ impl DiffuseBRDF {
 impl BxDFMaterial for DiffuseBRDF {
     fn sample(&self, _ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let diffuse_dir_local = cosine_sample_hemisphere();
-        Some(to_world(info.geometric_normal, diffuse_dir_local))
+        // Some(to_world(info.geometric_normal, diffuse_dir_local))
+        Some(to_world(info.shading_normal, diffuse_dir_local))
     }
 
     fn pdf(&self, _view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> f64 {
@@ -57,5 +81,9 @@ impl BxDFMaterial for DiffuseBRDF {
             ray.time(),
         );
         Some((color, next_ray))
+    }
+
+    fn normal_map(&self) -> Option<&ImageTexture> {
+        self.normal_map.as_deref()
     }
 }

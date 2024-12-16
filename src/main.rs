@@ -135,7 +135,15 @@ fn earth_scene() {
 }
 
 fn quads_scene() {
-    let red = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(1.0, 0.2, 0.2)));
+    // let red = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(1.0, 0.2, 0.2)));
+
+    // let normal_map = ImageTexture::new("NormalMap.png");
+    // let red = Arc::new(DiffuseBRDF::with_normal(Vec3::new(1.0, 0.2, 0.2), normal_map));
+
+    let bricks_texture = ImageTexture::new("bricks/color.png");
+    let bricks_normal = ImageTexture::new("bricks/normal.png");
+    let red = Arc::new(DiffuseBRDF::from_textures(bricks_texture, Some(bricks_normal)));
+
     let green = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.2, 1.0, 0.2)));
     let blue = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.2, 0.2, 1.0)));
     let orange = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(1.0, 0.5, 0.0)));
@@ -263,6 +271,11 @@ fn cornell_box_scene() {
     let mut world = World::new();
 
     let red = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
+
+    let bricks_texture = ImageTexture::new("bricks/color.png");
+    let bricks_normal = ImageTexture::new("bricks/normal.png");
+    let red = Arc::new(DiffuseBRDF::from_textures(bricks_texture, None));
+
     let white = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.73, 0.73, 0.73)));
     let green = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.12, 0.45, 0.15)));
     let diffuse_light = Arc::new(DiffuseLight::from_rgb(Vec3::new(25.0, 25.0, 25.0)));

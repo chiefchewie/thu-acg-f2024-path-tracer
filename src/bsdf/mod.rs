@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::{
     hittable::HitInfo,
     ray::Ray,
+    texture::{ImageTexture, Texture},
     vec3::{Luminance, Vec3},
 };
 
@@ -48,6 +49,10 @@ pub trait BxDFMaterial: Send + Sync {
 
     fn is_emissive(&self) -> bool {
         false
+    }
+
+    fn normal_map(&self) -> Option<&ImageTexture> {
+        None
     }
 }
 
