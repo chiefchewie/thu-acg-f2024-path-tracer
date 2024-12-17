@@ -37,10 +37,7 @@ impl AABB {
     }
 
     pub fn union(self, other: AABB) -> AABB {
-        AABB {
-            min: self.min.min(other.min),
-            max: self.max.max(other.max),
-        }
+        AABB::new(self.min.min(other.min), self.max.max(other.max))
     }
 
     pub fn centroid(&self) -> Vec3 {
@@ -104,15 +101,13 @@ impl AABB {
             new_min = new_min.min(corner);
             new_max = new_max.max(corner);
         }
-        AABB {
-            min: new_min,
-            max: new_max,
-        }
+
+        AABB::new(new_min, new_max)
     }
 }
 
 impl Default for AABB {
-    fn default() -> Self {
+    fn default() -> AABB {
         Self {
             min: Vec3::ZERO,
             max: Vec3::ZERO,
@@ -124,9 +119,6 @@ impl Add<Vec3> for AABB {
     type Output = AABB;
 
     fn add(self, rhs: Vec3) -> Self::Output {
-        AABB {
-            min: self.min + rhs,
-            max: self.max + rhs,
-        }
+        AABB::new(self.min + rhs, self.max + rhs)
     }
 }

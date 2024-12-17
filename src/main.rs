@@ -467,8 +467,8 @@ fn bunny_scene() {
     let mut world = World::new();
     let material_ground = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.8, 0.8, 0.0)));
     let material_center = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.1, 0.2, 0.5)));
-    let material_center = Arc::new(MetalBRDF::from_rgb(Vec3::ONE, 0.1));
-    let material_center = Arc::new(GlassBSDF::basic(1.5));
+    // let material_center = Arc::new(MetalBRDF::from_rgb(Vec3::ONE, 0.1));
+    // let material_center = Arc::new(GlassBSDF::basic(1.5));
     let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.8, 0.2, 0.2)));
 
     let material_left = Arc::new(PrincipledBSDF::new(
@@ -509,7 +509,7 @@ fn bunny_scene() {
         material_right,
     ));
 
-    world.build_bvh();
+    // world.build_bvh();
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
@@ -532,7 +532,7 @@ fn bunny_scene() {
     camera.render(&world, "demo/bunny.png");
 }
 fn main() {
-    env::set_var("RUST_BACKTRACE", "1");
+    env::set_var("RUST_BACKTRACE", "full");
 
     let x = 7;
     match x {
