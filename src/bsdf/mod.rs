@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{
     hittable::HitInfo,
     ray::Ray,
-    texture::{ImageTexture, Texture},
+    texture::ImageTexture,
     vec3::{Luminance, Vec3},
 };
 

@@ -273,11 +273,10 @@ fn basic_light_scene() {
 fn cornell_box_scene() {
     let mut world = World::new();
 
-    let red = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
-
+    // let red = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
     let bricks_texture = ImageTexture::new("bricks/color.png");
     let bricks_normal = ImageTexture::new("bricks/normal.png");
-    let red = Arc::new(DiffuseBRDF::from_textures(bricks_texture, None));
+    let red = Arc::new(DiffuseBRDF::from_textures(bricks_texture, Some(bricks_normal)));
 
     let white = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.73, 0.73, 0.73)));
     let green = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.12, 0.45, 0.15)));
@@ -397,10 +396,10 @@ fn test_scene() {
     // let material_left = Arc::new(MetalBRDF::new(Vec3::new(0.8, 0.1, 0.2), 0.3));
     // let material_left = Arc::new(GlassBSDF::new(0.1, 1.5));
     // let material_left = Arc::new(ClearcoatBRDF::new(0.5));
+    
     let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.8, 0.2, 0.2)));
-
-    let tex1 = SolidTexture::new(Vec3::new(0.2, 0.3, 0.1));
-    let tex2 = SolidTexture::new(Vec3::new(0.9, 0.9, 0.9));
+    // let tex1 = SolidTexture::new(Vec3::new(0.2, 0.3, 0.1));
+    // let tex2 = SolidTexture::new(Vec3::new(0.9, 0.9, 0.9));
     // let color_tex = Arc::new(CheckerTexture::new(0.32, Arc::new(tex1), Arc::new(tex2)));
     let material_left = Arc::new(PrincipledBSDF::new(
         color_tex, // base_color,
@@ -466,9 +465,9 @@ fn test_scene() {
 fn bunny_scene() {
     let mut world = World::new();
     let material_ground = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.8, 0.8, 0.0)));
-    let material_center = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.1, 0.2, 0.5)));
+    // let material_center = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.1, 0.2, 0.5)));
     // let material_center = Arc::new(MetalBRDF::from_rgb(Vec3::ONE, 0.1));
-    // let material_center = Arc::new(GlassBSDF::basic(1.5));
+    let material_center = Arc::new(GlassBSDF::basic(1.5));
     let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.8, 0.2, 0.2)));
 
     let material_left = Arc::new(PrincipledBSDF::new(
@@ -509,12 +508,12 @@ fn bunny_scene() {
         material_right,
     ));
 
-    // world.build_bvh();
+    world.build_bvh();
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = 500;
-    camera.samples_per_pixel = 10;
+    camera.samples_per_pixel = 100;
     camera.max_depth = 20;
 
     camera.vfov = 40.0;
