@@ -33,11 +33,11 @@ pub fn step(edge: Vec3, x: Vec3) -> Vec3 {
     Vec3::new(f(edge.x, x.x), f(edge.y, x.y), f(edge.z, x.z))
 }
 
-pub trait Luminance {
+pub trait VectorExt {
     fn luminance(&self) -> f64;
 }
 
-impl Luminance for Vec3 {
+impl VectorExt for Vec3 {
     fn luminance(&self) -> f64 {
         0.2126 * self.x + 0.7152 * self.y + 0.0722 * self.z
     }

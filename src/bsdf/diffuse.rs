@@ -42,11 +42,7 @@ impl DiffuseBRDF {
     pub fn from_textures(color_texture: ImageTexture, normal_map: Option<ImageTexture>) -> Self {
         Self {
             base_color: Arc::new(color_texture),
-            normal_map: if let Some(map) = normal_map {
-                Some(Arc::new(map))
-            } else {
-                None
-            },
+            normal_map: normal_map.map(Arc::new),
         }
     }
 }

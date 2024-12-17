@@ -4,7 +4,7 @@ use crate::{
     hittable::HitInfo,
     ray::Ray,
     texture::ImageTexture,
-    vec3::{Luminance, Vec3},
+    vec3::{Vec3, VectorExt},
 };
 
 pub mod clearcoat;

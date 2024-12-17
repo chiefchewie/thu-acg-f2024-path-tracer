@@ -5,7 +5,7 @@ use crate::{
     hittable::World,
     interval::Interval,
     ray::Ray,
-    vec3::{Luminance, Vec2, Vec3},
+    vec3::{Vec2, Vec3, VectorExt},
 };
 use image::{ImageBuffer, Rgb};
 use rand::{thread_rng, Rng};

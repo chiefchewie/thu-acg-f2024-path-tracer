@@ -63,6 +63,12 @@ impl AABB {
         self.max - self.min
     }
 
+    /// technically, half of this AABB's surface area
+    pub fn surface_area(&self) -> f64 {
+        let e = self.extent();
+        e.x * e.y + e.x * e.z + e.y * e.z
+    }
+
     pub fn transform(&self, mat: Mat4) -> AABB {
         let corners = [
             self.min,
