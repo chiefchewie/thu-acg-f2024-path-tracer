@@ -28,7 +28,7 @@ impl Triangle {
         material: MatPtr,
     ) -> Self {
         let min_v = v0.min(v1).min(v2);
-        let max_v = v0.max(v2).max(v2);
+        let max_v = v0.max(v1).max(v2);
         let bbox = AABB::new(min_v, max_v);
         Self {
             vertices: [v0, v1, v2],

@@ -14,26 +14,10 @@ pub struct AABB {
 
 impl AABB {
     pub fn new(a: Vec3, b: Vec3) -> AABB {
-        let min = a.min(b);
-        let max = a.max(b);
-        let mut ix = Interval::new(min.x, max.x);
-        let mut iy = Interval::new(min.y, max.y);
-        let mut iz = Interval::new(min.z, max.z);
-        let delta = 1e-3;
-        if ix.size() < delta {
-            ix = ix.expand(delta);
-        }
-        if iy.size() < delta {
-            iy = iy.expand(delta);
-        }
-        if iz.size() < delta {
-            iz = iz.expand(delta);
-        }
-
-        AABB {
-            min: Vec3::new(ix.min, iy.min, iz.min),
-            max: Vec3::new(ix.max, iy.max, iz.max),
-        }
+        let delta = Vec3::splat(1e-3); // make sure the bounding box isn't too flat on any of the axis
+        let min = a.min(b) - delta;
+        let max = a.max(b) + delta;
+        AABB { min, max }
     }
 
     pub fn union(self, other: AABB) -> AABB {
