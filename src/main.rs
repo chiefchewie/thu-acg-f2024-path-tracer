@@ -7,7 +7,7 @@ use path_tracer::{
         principled::PrincipledBSDF,
     },
     camera::Camera,
-    hittable::{PointLight, Quad, Sphere, World},
+    hittable::{Instance, PointLight, Quad, Sphere, TriangleMesh, World},
     material::DiffuseLight,
     texture::{CheckerTexture, ImageTexture, SolidTexture},
     vec3::{random_vector, random_vector_range, Vec3},
@@ -142,7 +142,10 @@ fn quads_scene() {
 
     let bricks_texture = ImageTexture::new("bricks/color.png");
     let bricks_normal = ImageTexture::new("bricks/normal.png");
-    let red = Arc::new(DiffuseBRDF::from_textures(bricks_texture, Some(bricks_normal)));
+    let red = Arc::new(DiffuseBRDF::from_textures(
+        bricks_texture,
+        Some(bricks_normal),
+    ));
 
     let green = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.2, 1.0, 0.2)));
     let blue = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.2, 0.2, 1.0)));
@@ -460,10 +463,78 @@ fn test_scene() {
     camera.render(&world, "demo/test.png");
 }
 
+fn bunny_scene() {
+    let mut world = World::new();
+    let material_ground = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.8, 0.8, 0.0)));
+    let material_center = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.1, 0.2, 0.5)));
+    let material_center = Arc::new(MetalBRDF::from_rgb(Vec3::ONE, 0.1));
+    let material_center = Arc::new(GlassBSDF::basic(1.5));
+    let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.8, 0.2, 0.2)));
+
+    let material_left = Arc::new(PrincipledBSDF::new(
+        color_tex, // base_color,
+        0.00,      // metallic,
+        0.91,      // roughness,
+        0.01,      // subsurface,
+        0.00,      // specular,
+        0.01,      // specular_tint,
+        1.5,       // ior,
+        0.09,      // spec_trans,
+        0.01,      // sheen,
+        0.01,      // sheen_tint,
+        0.01,      // clearcoat,
+        0.01,      // clearcoat_gloss,
+    ));
+    let material_right = Arc::new(MetalBRDF::from_rgb(Vec3::new(0.8, 0.1, 0.2), 0.3));
+
+    world.add_object(Sphere::new_still(
+        100.0,
+        Vec3::new(0.0, -100.5, -1.0),
+        material_ground,
+    ));
+    world.add_object(Instance::new(
+        Arc::new(TriangleMesh::from_obj("assets/bunny.obj", material_center).unwrap()),
+        Vec3::Z,
+        0.0,
+        Vec3::new(0.1, -0.8, -2.0),
+    ));
+    world.add_object(Sphere::new_still(
+        0.5,
+        Vec3::new(-1.0, 0.0, -1.0),
+        material_left,
+    ));
+    world.add_object(Sphere::new_still(
+        0.5,
+        Vec3::new(1.0, 0.0, -1.0),
+        material_right,
+    ));
+
+    world.build_bvh();
+
+    let mut camera = Camera::new();
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = 500;
+    camera.samples_per_pixel = 10;
+    camera.max_depth = 20;
+
+    camera.vfov = 40.0;
+    camera.look_from = Vec3::new(0.0, 0.1, 0.5);
+    camera.look_at = Vec3::new(0.0, 0.1, 0.0);
+    camera.vup = Vec3::Y;
+
+    camera.blur_strength = 0.5;
+    camera.focal_length = 10.0;
+    camera.defocus_angle = 0.0;
+
+    camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
+
+    camera.init();
+    camera.render(&world, "demo/bunny.png");
+}
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
 
-    let x = 5;
+    let x = 7;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),
@@ -471,6 +542,7 @@ fn main() {
         4 => basic_light_scene(),
         5 => cornell_box_scene(),
         6 => test_scene(),
+        7 => bunny_scene(),
         _ => (),
     }
 }
