@@ -18,14 +18,18 @@ pub enum BVHNode {
 pub struct BVH;
 
 impl BVH {
+    const MAX_PRIMITIVES_PER_LEAF: usize = 4;
+
     pub fn build(primitives: Vec<Arc<dyn Hittable>>) -> BVHNode {
         Self::build_recursive(primitives)
     }
 
     // TODO surface area heuristic instead of splitting along longest axis
     fn build_recursive(mut primitives: Vec<Arc<dyn Hittable>>) -> BVHNode {
-        if primitives.len() == 1 {
-            let bbox = primitives[0].bounding_box();
+        if primitives.len() <= Self::MAX_PRIMITIVES_PER_LEAF {
+            let bbox = primitives
+                .iter()
+                .fold(AABB::default(), |acc, e| AABB::union(acc, e.bounding_box()));
             return BVHNode::Leaf { bbox, primitives };
         }
 
@@ -57,18 +61,7 @@ impl BVH {
         let left = Self::build_recursive(left_primitives);
         let right = Self::build_recursive(right_primitives);
 
-        // Return an internal node
-        let bbox = match (&left, &right) {
-            (
-                BVHNode::Leaf {
-                    bbox: left_aabb, ..
-                },
-                BVHNode::Leaf {
-                    bbox: right_aabb, ..
-                },
-            ) => AABB::union(*left_aabb, *right_aabb),
-            _ => total_bbox,
-        };
+        let bbox = AABB::union(left.bounding_box(), right.bounding_box());
 
         BVHNode::Internal {
             bbox,
