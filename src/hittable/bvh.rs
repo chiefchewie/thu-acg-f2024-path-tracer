@@ -31,9 +31,7 @@ impl BVH {
 
         let total_bbox = primitives
             .iter()
-            .fold(primitives[0].bounding_box(), |acc, e| {
-                AABB::union(acc, e.bounding_box())
-            });
+            .fold(AABB::default(), |acc, e| AABB::union(acc, e.bounding_box()));
 
         let extent = total_bbox.extent();
         let axis = if extent.x > extent.y && extent.x > extent.z {
@@ -45,20 +43,8 @@ impl BVH {
         };
 
         primitives.sort_by(|a, b| {
-            let centroid_a = a.bounding_box().centroid();
-            let centroid_b = b.bounding_box().centroid();
-            let ca = match axis {
-                0 => centroid_a.x,
-                1 => centroid_a.y,
-                2 => centroid_a.z,
-                _ => unreachable!(),
-            };
-            let cb = match axis {
-                0 => centroid_b.x,
-                1 => centroid_b.y,
-                2 => centroid_b.z,
-                _ => unreachable!(),
-            };
+            let ca = a.bounding_box().centroid()[axis];
+            let cb = b.bounding_box().centroid()[axis];
             ca.partial_cmp(&cb).unwrap_or(Ordering::Equal)
         });
 
@@ -94,15 +80,9 @@ impl BVH {
 
 impl Hittable for BVHNode {
     fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
-        if !self.bounding_box().intersects(ray, ray_t) {
-            return None;
-        }
-
+        self.bounding_box().intersects(ray, ray_t)?;
         match self {
-            BVHNode::Leaf {
-                bbox: _,
-                primitives,
-            } => {
+            BVHNode::Leaf { primitives, .. } => {
                 let mut hit_info: Option<HitInfo> = None;
                 let mut closest_hit = ray_t.max;
                 for p in primitives {
@@ -113,21 +93,29 @@ impl Hittable for BVHNode {
                 }
                 hit_info
             }
-            BVHNode::Internal {
-                bbox: _,
-                left,
-                right,
-            } => {
-                let left_hit_info = left.intersects(ray, ray_t);
-                let right_hit_info = if let Some(ref info) = left_hit_info {
-                    right.intersects(ray, Interval::new(ray_t.min, info.dist))
-                } else {
-                    right.intersects(ray, ray_t)
-                };
-                match (left_hit_info, right_hit_info) {
+            BVHNode::Internal { left, right, .. } => {
+                let left_hit = left.bounding_box().intersects(ray, ray_t);
+                let right_hit = right.bounding_box().intersects(ray, ray_t);
+                match (left_hit, right_hit) {
                     (None, None) => None,
-                    (_, Some(info)) => Some(info),
-                    (Some(info), None) => Some(info),
+                    (None, Some(_)) => right.intersects(ray, ray_t),
+                    (Some(_), None) => left.intersects(ray, ray_t),
+                    (Some(_), Some(_)) => {
+                        let left_hit = left.intersects(ray, ray_t);
+                        let right_hit = right.intersects(ray, ray_t);
+                        match (left_hit, right_hit) {
+                            (None, None) => None,
+                            (None, Some(right_hit)) => Some(right_hit),
+                            (Some(left_hit), None) => Some(left_hit),
+                            (Some(left_hit), Some(right_hit)) => {
+                                if left_hit.dist < right_hit.dist {
+                                    Some(left_hit)
+                                } else {
+                                    Some(right_hit)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

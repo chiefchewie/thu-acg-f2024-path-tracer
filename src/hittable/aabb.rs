@@ -25,38 +25,20 @@ impl AABB {
     }
 
     pub fn centroid(&self) -> Vec3 {
-        0.5 * (self.max + self.max)
+        0.5 * (self.min + self.max)
     }
 
-    pub fn intersects(&self, ray: &Ray, ray_t: Interval) -> bool {
-        let mut t_min = (self.min.x - ray.origin().x) / ray.direction().x;
-        let mut t_max = (self.max.x - ray.origin().x) / ray.direction().x;
-        if t_min > t_max {
-            std::mem::swap(&mut t_min, &mut t_max);
+    pub fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<f64> {
+        let m = ray.direction().recip();
+        let t1 = (self.min - ray.origin()) * m;
+        let t2 = (self.max - ray.origin()) * m;
+        let t_near = t1.min(t2).max_element();
+        let t_far = t1.max(t2).min_element();
+        if t_near <= t_far && t_far >= ray_t.min && t_near <= ray_t.max {
+            Some(t_near.max(ray_t.min))
+        } else {
+            None
         }
-
-        let mut t_enter = t_min;
-        let mut t_exit = t_max;
-
-        for (min, max, origin, direction) in [
-            (self.min.y, self.max.y, ray.origin().y, ray.direction().y),
-            (self.min.z, self.max.z, ray.origin().z, ray.direction().z),
-        ] {
-            let mut t_min = (min - origin) / direction;
-            let mut t_max = (max - origin) / direction;
-            if t_min > t_max {
-                std::mem::swap(&mut t_min, &mut t_max);
-            }
-
-            t_enter = t_enter.max(t_min);
-            t_exit = t_exit.min(t_max);
-
-            if t_enter > t_exit {
-                return false; // No intersection
-            }
-        }
-
-        t_enter <= ray_t.max && t_exit >= ray_t.min
     }
 
     pub fn extent(&self) -> Vec3 {
@@ -99,8 +81,8 @@ impl AABB {
 impl Default for AABB {
     fn default() -> AABB {
         Self {
-            min: Vec3::ZERO,
-            max: Vec3::ZERO,
+            min: Vec3::INFINITY,
+            max: Vec3::NEG_INFINITY,
         }
     }
 }
