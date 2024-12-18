@@ -536,7 +536,7 @@ fn bunny_scene() {
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
 
-    let x = 7;
+    let x = 5;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),
