@@ -18,24 +18,22 @@ pub enum BVHNode {
 pub struct BVH;
 
 impl BVH {
-    const MAX_PRIMITIVES_PER_LEAF: usize = 2;
-
     pub fn build(primitives: Vec<Arc<dyn Hittable>>) -> BVHNode {
         Self::build_recursive(primitives)
     }
 
     // TODO surface area heuristic instead of splitting along longest axis
     fn build_recursive(mut primitives: Vec<Arc<dyn Hittable>>) -> BVHNode {
-        if primitives.len() == Self::MAX_PRIMITIVES_PER_LEAF {
-            let bbox = primitives
-                .iter()
-                .fold(AABB::default(), |acc, e| AABB::union(acc, e.bounding_box()));
+        if primitives.len() == 1 {
+            let bbox = primitives[0].bounding_box();
             return BVHNode::Leaf { bbox, primitives };
         }
 
         let total_bbox = primitives
             .iter()
-            .fold(AABB::default(), |acc, e| AABB::union(acc, e.bounding_box()));
+            .fold(primitives[0].bounding_box(), |acc, e| {
+                AABB::union(acc, e.bounding_box())
+            });
 
         let extent = total_bbox.extent();
         let axis = if extent.x > extent.y && extent.x > extent.z {
@@ -47,8 +45,20 @@ impl BVH {
         };
 
         primitives.sort_by(|a, b| {
-            let ca = a.bounding_box().centroid()[axis];
-            let cb = b.bounding_box().centroid()[axis];
+            let centroid_a = a.bounding_box().centroid();
+            let centroid_b = b.bounding_box().centroid();
+            let ca = match axis {
+                0 => centroid_a.x,
+                1 => centroid_a.y,
+                2 => centroid_a.z,
+                _ => unreachable!(),
+            };
+            let cb = match axis {
+                0 => centroid_b.x,
+                1 => centroid_b.y,
+                2 => centroid_b.z,
+                _ => unreachable!(),
+            };
             ca.partial_cmp(&cb).unwrap_or(Ordering::Equal)
         });
 
