@@ -398,7 +398,7 @@ fn cornell_box_scene() {
 fn test_scene() {
     let mut world = World::new();
 
-    let my_mat = Arc::new(MetalBRDF::from_rgb(Vec3::ONE, 0.1));
+    let my_mat = Arc::new(MetalBRDF::from_rgb(Vec3::ONE, 0.001));
     world.add_object(Sphere::new_still(9.0, Vec3::new(4.0, 2.0, 0.0), my_mat));
 
     let diffuse_light = Arc::new(DiffuseLight::from_rgb(Vec3::new(10.0, 10.0, 10.0)));
@@ -413,8 +413,8 @@ fn test_scene() {
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
-    camera.image_width = 400;
-    camera.samples_per_pixel = 1000;
+    camera.image_width = 1000;
+    camera.samples_per_pixel = 4000;
     camera.max_depth = 50;
 
     camera.vfov = 90.0;
@@ -427,7 +427,7 @@ fn test_scene() {
     camera.defocus_angle = 0.0;
 
     // camera.environment = EnvironmentType::Color(Vec3::new(0.2, 0.2, 0.2));
-    let env_map = ImageTexture::new("assets/envmap.jpg");
+    let env_map = ImageTexture::new("assets/stpeters_probe_latlong.hdr");
     camera.environment = EnvironmentType::Map(Arc::new(env_map));
 
     camera.init();
