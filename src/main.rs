@@ -374,7 +374,7 @@ fn cornell_box_scene() {
     let mut camera = Camera::new();
     camera.aspect_ratio = 1.0;
     camera.image_width = 900;
-    camera.samples_per_pixel = 100;
+    camera.samples_per_pixel = 1000;
     camera.max_depth = 20;
 
     camera.vfov = 40.0;
