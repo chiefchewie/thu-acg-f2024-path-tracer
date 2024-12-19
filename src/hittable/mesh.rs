@@ -1,4 +1,5 @@
 // src/hittable/mesh.rs
+use rand::{thread_rng, Rng};
 use std::sync::Arc;
 use tobj::LoadError;
 
@@ -37,6 +38,12 @@ impl Triangle {
             material,
             bbox,
         }
+    }
+
+    pub fn area(&self) -> f64 {
+        let edge1 = self.vertices[1] - self.vertices[0];
+        let edge2 = self.vertices[2] - self.vertices[0];
+        0.5 * edge1.cross(edge2).length()
     }
 }
 
@@ -112,6 +119,21 @@ impl Hittable for Triangle {
     fn material(&self) -> Option<&dyn BxDFMaterial> {
         Some(self.material.as_ref())
     }
+
+    fn sample_surface(&self, hit_info: &HitInfo, _time: f64) -> Option<(Vec3, Vec3, f64)> {
+        let u = hit_info.u;
+        let v = hit_info.v;
+        let w = 1.0 - u - v;
+        let normal = if let Some(normals) = self.normals {
+            (normals[0] * w + normals[1] * u + normals[2] * v).normalize()
+        } else {
+            (self.vertices[1] - self.vertices[0])
+                .cross(self.vertices[2] - self.vertices[0])
+                .normalize()
+        };
+        let point = self.vertices[0] * w + self.vertices[1] * u + self.vertices[2] * v;
+        Some((point, normal, 1.0 / self.area()))
+    }
 }
 
 pub struct TriangleMesh {
@@ -185,5 +207,11 @@ impl Hittable for TriangleMesh {
 
     fn material(&self) -> Option<&dyn BxDFMaterial> {
         None
+    }
+
+    fn sample_surface(&self, hit_info: &HitInfo, time: f64) -> Option<(Vec3, Vec3, f64)> {
+        let i = thread_rng().gen_range(0..self.triangles.len());
+        let (pos, nor, pdf) = self.triangles.get(i).sample_surface(hit_info, time)?;
+        Some((pos, nor, pdf / (self.triangles.len() as f64)))
     }
 }

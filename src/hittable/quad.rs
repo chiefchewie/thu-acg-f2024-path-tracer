@@ -1,11 +1,13 @@
+use rand::{thread_rng, Rng};
+
 use crate::{bsdf::MatPtr, interval::Interval, ray::Ray, vec3::Vec3};
 
 use super::{hit_info::HitInfo, Hittable, AABB};
 
 pub struct Quad {
-    q: Vec3,
-    u: Vec3,
-    v: Vec3,
+    q: Vec3, // origin
+    u: Vec3, // side 1
+    v: Vec3, // side 2
     w: Vec3,
     normal: Vec3,
     d: f64,
@@ -75,5 +77,14 @@ impl Hittable for Quad {
 
     fn material(&self) -> Option<&dyn crate::bsdf::BxDFMaterial> {
         Some(self.material.as_ref())
+    }
+
+    fn sample_surface(&self, _hit_info: &HitInfo, _time: f64) -> Option<(Vec3, Vec3, f64)> {
+        let u: f64 = thread_rng().gen();
+        let v: f64 = thread_rng().gen();
+        let normal = self.normal;
+        let point = self.q + self.u * u + self.v * v;
+        let area = self.u.cross(self.v).length();
+        Some((point, normal, 1.0 / area))
     }
 }

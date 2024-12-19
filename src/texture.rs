@@ -53,8 +53,9 @@ impl<T: Clone + Send + Sync> Texture<T> for CheckerTexture<T> {
     }
 }
 
+#[derive(Debug)]
 pub struct ImageTexture {
-    img: ImageBuffer<Rgb<u8>, Vec<u8>>,
+    pub img: ImageBuffer<Rgb<u8>, Vec<u8>>,
 }
 
 impl ImageTexture {

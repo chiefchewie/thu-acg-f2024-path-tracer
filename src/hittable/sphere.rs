@@ -106,4 +106,39 @@ impl Hittable for Sphere {
     fn material(&self) -> Option<&dyn crate::bsdf::BxDFMaterial> {
         Some(self.material.as_ref())
     }
+
+    fn sample_surface(&self, hit_info: &HitInfo, time: f64) -> Option<(Vec3, Vec3, f64)> {
+        let current_center = self.get_position(time);
+        // Create coordinate system aligned with hit normal
+        let w = hit_info.geometric_normal;
+        let a = if w.x.abs() > 0.9 {
+            Vec3::new(0.0, 1.0, 0.0)
+        } else {
+            Vec3::new(1.0, 0.0, 0.0)
+        };
+        let v = w.cross(a).normalize();
+        let u = w.cross(v);
+
+        // Sample random point on hemisphere
+        let r1 = rand::random::<f64>();
+        let r2 = rand::random::<f64>();
+        let cos_theta = r1.sqrt();
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+        let phi = 2.0 * std::f64::consts::PI * r2;
+
+        // Convert to cartesian coordinates
+        let direction = Vec3::new(phi.cos() * sin_theta, phi.sin() * sin_theta, cos_theta);
+
+        // Transform to world space
+        let world_direction = u * direction.x + v * direction.y + w * direction.z;
+
+        // Get point on sphere
+        let point = current_center + world_direction * self.radius;
+        let normal = (point - current_center).normalize();
+
+        // PDF is 1/(2*PI) for hemisphere sampling
+        let pdf = 1.0 / (2.0 * std::f64::consts::PI);
+
+        Some((point, normal, pdf))
+    }
 }

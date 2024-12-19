@@ -1,5 +1,5 @@
 use crate::{bsdf::BxDFMaterial, hittable::HitInfo, interval::Interval, ray::Ray};
-use std::{cmp::Ordering, f64::INFINITY, sync::Arc};
+use std::{cmp::Ordering, sync::Arc};
 
 use super::{Hittable, AABB};
 
@@ -17,6 +17,7 @@ pub enum BVHNode {
 
 pub struct BVH;
 
+type HitList = Vec<Arc<dyn Hittable>>;
 impl BVH {
     const MAX_HITTABLES_PER_LEAF: usize = 4;
 
@@ -50,13 +51,11 @@ impl BVH {
         }
     }
 
-    fn find_best_split(
-        hittables: &[Arc<dyn Hittable>],
-    ) -> (Vec<Arc<dyn Hittable>>, Vec<Arc<dyn Hittable>>) {
+    fn find_best_split(hittables: &[Arc<dyn Hittable>]) -> (HitList, HitList) {
         let parent_bbox = hittables
             .iter()
             .fold(AABB::default(), |acc, obj| acc.union(obj.bounding_box()));
-        let mut best_cost = INFINITY;
+        let mut best_cost = f64::INFINITY;
         let mut best_axis = 0;
         let mut best_split_pos = 0.0;
 
@@ -107,7 +106,7 @@ impl BVH {
         }
 
         if left_count == 0 || right_count == 0 {
-            return INFINITY;
+            return f64::INFINITY;
         }
 
         let cost = left_bbox.surface_area() * left_count as f64
@@ -116,7 +115,7 @@ impl BVH {
         if cost > 0.0 && cost < parent_cost {
             cost
         } else {
-            INFINITY
+            f64::INFINITY
         }
     }
 }
@@ -172,6 +171,14 @@ impl Hittable for BVHNode {
     }
 
     fn material(&self) -> Option<&dyn BxDFMaterial> {
+        None
+    }
+
+    fn sample_surface(
+        &self,
+        _hit_info: &HitInfo,
+        _time: f64,
+    ) -> Option<(crate::vec3::Vec3, crate::vec3::Vec3, f64)> {
         None
     }
 }

@@ -1,16 +1,23 @@
 use rayon::prelude::*;
-use std::{f64::consts::PI, time::Instant};
+use std::{f64::consts::PI, sync::Arc, time::Instant};
 
 use crate::{
     hittable::World,
     interval::Interval,
     ray::Ray,
+    texture::{ImageTexture, Texture},
     vec3::{Vec2, Vec3, VectorExt},
 };
 use image::{ImageBuffer, Rgb};
 use rand::{thread_rng, Rng};
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone)]
+pub enum EnvironmentType {
+    Color(Vec3),
+    Map(Arc<ImageTexture>),
+}
+
+#[derive(Debug, Clone)]
 pub struct Camera {
     pub aspect_ratio: f64,
     pub image_width: usize,
@@ -25,7 +32,7 @@ pub struct Camera {
     pub blur_strength: f64,
     pub focal_length: f64,
     pub defocus_angle: f64,
-    pub ambient_light: Vec3,
+    pub environment: EnvironmentType,
 
     forward: Vec3,
     right: Vec3,
@@ -40,12 +47,6 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new() -> Camera {
-        Camera {
-            ..Default::default()
-        }
-    }
-
     pub fn init(&mut self) {
         self.image_height = (self.image_width as f64 / self.aspect_ratio) as usize;
         self.pixel_sample_scale = 1.0 / self.samples_per_pixel as f64;
@@ -135,9 +136,17 @@ impl Camera {
         Vec2::new(radius * angle.cos(), radius * angle.sin())
     }
 
-    fn ambient_light(&self, ray: &Ray) -> Vec3 {
-        let _ = ray;
-        self.ambient_light
+    fn sample_environment(&self, ray: &Ray) -> Vec3 {
+        match self.environment {
+            EnvironmentType::Color(ref color) => color.clone(),
+            EnvironmentType::Map(ref env_map) => {
+                let theta = ray.direction().y.acos();
+                let phi = ray.direction().z.atan2(ray.direction().x);
+                let u = (phi + PI) / (2.0 * PI);
+                let v = 1.0 - theta / PI;
+                env_map.value(u, v, &Vec3::ZERO)
+            }
+        }
     }
 
     fn generate_ray(&self, r: usize, c: usize) -> Ray {
@@ -166,42 +175,91 @@ impl Camera {
         let mut radiance = Vec3::ZERO;
         let mut throughput = Vec3::ONE;
         for bounces in 0..self.max_depth {
-            let Some(hit_info) = world.intersects(&ray, Interval::new(eps, f64::INFINITY)) else {
-                radiance += throughput * self.ambient_light(&ray);
+            let Some((hit_info, _is_light)) =
+                world.intersect_all(&ray, Interval::new(eps, f64::INFINITY))
+            else {
+                radiance += throughput * self.sample_environment(&ray);
                 break;
             };
 
-            // TODO figure this out for real (MULTIPLE IMPORTANCE SAMPLING)
-            // layout
-            // sample a point on a light source (need to impl ways to generate a point on a surface)
-            // light_dir, light_pdf,
-            // then this material may also scatter the incoming ray resulting in
-            // scatter_dir, scatter_pdf
-            // we should select one of light_dir, scatter_dir based on some probability (how so? 50/50 split?)
-            //     or some heuristic
-            // and evaluate the the mixed brdf/pdf for the seleced direction
+            // Direct lighting with light sampling (NEE???)
+            if let Some((light_pos, light_normal, le, light_pdf)) =
+                world.sample_light(&hit_info, ray.time())
+            {
+                let normal = hit_info.shading_normal;
+                let light_dir = (light_pos - hit_info.point).normalize();
+                let g = geometric_factor(hit_info.point, light_pos, light_normal);
+                let mat_pdf = hit_info.mat.pdf(-ray.direction(), light_dir, &hit_info);
+                let mis_weight = balance_heuristic(light_pdf, mat_pdf * g);
+                let brdf = hit_info.mat.eval(-ray.direction(), light_dir, &hit_info);
+                radiance +=
+                    throughput * brdf * le * mis_weight * g * normal.dot(light_dir).max(0.0)
+                        / light_pdf;
+            }
 
             let emission = hit_info.mat.emitted(hit_info.u, hit_info.v, hit_info.point);
-            radiance += emission * throughput;
+            radiance += throughput * emission;
 
             // russian roulette
             if bounces > min_bounces {
-                let p = throughput.luminance();
+                let p = throughput.luminance().clamp(0.01, 1.0);
                 if thread_rng().gen::<f64>() > p {
                     break;
                 }
                 throughput /= p;
             }
 
-            // attenuation = brdf / pdf in the lingo
-            match hit_info.mat.scatter(&ray, &hit_info) {
-                Some((attenuation, next_ray)) => {
-                    throughput *= attenuation;
-                    ray = next_ray;
-                }
-                None => break,
-            }
+            // Indirect lighting with BSDF sampling
+            let Some((attenuation, next_ray)) = hit_info.mat.scatter(&ray, &hit_info) else {
+                break;
+            };
+            throughput *= attenuation;
+            ray = next_ray;
         }
-        radiance
+        radiance / 2.0
+    }
+}
+
+fn geometric_factor(p_surface: Vec3, p_light: Vec3, normal: Vec3) -> f64 {
+    let dir = (p_light - p_surface).normalize();
+    let len_squared = (p_light - p_surface).length_squared();
+    normal.dot(dir).abs() / len_squared
+}
+
+fn balance_heuristic(p: f64, q: f64) -> f64 {
+    p / (p + q)
+}
+
+impl Default for Camera {
+    fn default() -> Self {
+        Self {
+            aspect_ratio: Default::default(),
+            image_width: Default::default(),
+            samples_per_pixel: Default::default(),
+            max_depth: Default::default(),
+            vfov: Default::default(),
+            look_from: Default::default(),
+            look_at: Default::default(),
+            vup: Default::default(),
+            blur_strength: Default::default(),
+            focal_length: Default::default(),
+            defocus_angle: Default::default(),
+            environment: EnvironmentType::Color(Vec3::ZERO),
+            forward: Default::default(),
+            right: Default::default(),
+            up: Default::default(),
+            image_height: Default::default(),
+            pixel_sample_scale: Default::default(),
+            center: Default::default(),
+            pixel00: Default::default(),
+            pixel_du: Default::default(),
+            pixel_dv: Default::default(),
+        }
+    }
+}
+
+impl Camera {
+    pub fn new() -> Camera {
+        Self::default()
     }
 }

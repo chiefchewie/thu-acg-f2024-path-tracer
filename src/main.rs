@@ -6,7 +6,7 @@ use path_tracer::{
         diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, mix::MixBxDf,
         principled::PrincipledBSDF,
     },
-    camera::Camera,
+    camera::{Camera, EnvironmentType},
     hittable::{Instance, PointLight, Quad, Sphere, TriangleMesh, World},
     material::DiffuseLight,
     texture::{CheckerTexture, ImageTexture, SolidTexture},
@@ -78,7 +78,7 @@ fn balls_scene() {
     camera.focal_length = 10.0;
     camera.defocus_angle = 0.6;
 
-    camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
+    camera.environment = EnvironmentType::Color(Vec3::new(0.7, 0.8, 1.0));
 
     camera.init();
     camera.render(&world, "demo/balls.png");
@@ -128,7 +128,7 @@ fn earth_scene() {
     camera.focal_length = 2.869817807;
     camera.defocus_angle = 2.5;
 
-    camera.ambient_light = Vec3::new(0.85, 0.85, 1.0);
+    camera.environment = EnvironmentType::Color(Vec3::new(0.85, 0.85, 1.0));
 
     camera.init();
     camera.render(&world, "demo/earth.png");
@@ -201,7 +201,7 @@ fn quads_scene() {
     camera.focal_length = 10.0;
     camera.defocus_angle = 0.0;
 
-    camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
+    camera.environment = EnvironmentType::Color(Vec3::new(0.7, 0.8, 1.0));
 
     camera.init();
     camera.render(&world, "demo/quads.png");
@@ -210,12 +210,12 @@ fn quads_scene() {
 fn basic_light_scene() {
     let mut world = World::new();
 
-    let red = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
-    world.add_object(Sphere::new_still(
-        1000.0,
-        Vec3::new(0.0, -1000.0, 0.0),
-        red.clone(),
-    ));
+    // let red = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
+    // world.add_object(Sphere::new_still(
+    //     1000.0,
+    //     Vec3::new(0.0, -1000.0, 0.0),
+    //     red.clone(),
+    // ));
 
     // plasticy cermaicy material???
     let mat1a = DiffuseBRDF::from_rgb(Vec3::new(0.7, 0.9, 0.5));
@@ -255,7 +255,7 @@ fn basic_light_scene() {
     camera.samples_per_pixel = 1000;
     camera.max_depth = 50;
 
-    camera.vfov = 30.0;
+    camera.vfov = 90.0;
     camera.look_from = Vec3::new(0.0, 3.0, 17.0);
     camera.look_at = Vec3::new(0.0, 2.0, 0.0);
     camera.vup = Vec3::new(0.0, 1.0, 0.0);
@@ -264,7 +264,9 @@ fn basic_light_scene() {
     camera.focal_length = 10.0;
     camera.defocus_angle = 0.0;
 
-    camera.ambient_light = Vec3::new(0.2, 0.2, 0.2);
+    // camera.environment = EnvironmentType::Color(Vec3::new(0.2, 0.2, 0.2));
+    let env_map = ImageTexture::new("assets/envmap.jpg");
+    camera.environment = EnvironmentType::Map(Arc::new(env_map));
 
     camera.init();
     camera.render(&world, "demo/lights.png");
@@ -273,17 +275,16 @@ fn basic_light_scene() {
 fn cornell_box_scene() {
     let mut world = World::new();
 
-    // let red = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
-    let bricks_texture = ImageTexture::new("bricks/color.png");
-    let bricks_normal = ImageTexture::new("bricks/normal.png");
-    let red = Arc::new(DiffuseBRDF::from_textures(
-        bricks_texture,
-        Some(bricks_normal),
-    ));
+    let red = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.65, 0.05, 0.05)));
+    // let bricks_texture = ImageTexture::new("bricks/color.png");
+    // let bricks_normal = ImageTexture::new("bricks/normal.png");
+    // let red = Arc::new(DiffuseBRDF::from_textures(
+    //     bricks_texture,
+    //     Some(bricks_normal),
+    // ));
 
     let white = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.73, 0.73, 0.73)));
     let green = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.12, 0.45, 0.15)));
-    let diffuse_light = Arc::new(DiffuseLight::from_rgb(Vec3::new(25.0, 25.0, 25.0)));
     world.add_object(Quad::new(
         Vec3::new(555.0, 0.0, 0.0),
         Vec3::new(0.0, 555.0, 0.0),
@@ -295,12 +296,6 @@ fn cornell_box_scene() {
         Vec3::new(0.0, 555.0, 0.0),
         Vec3::new(0.0, 0.0, 555.0),
         red,
-    ));
-    world.add_object(Quad::new(
-        Vec3::new(343.0, 554.0, 332.0),
-        Vec3::new(-130.0, 0.0, 0.0),
-        Vec3::new(0.0, 0.0, -105.0),
-        diffuse_light,
     ));
     world.add_object(Quad::new(
         Vec3::new(0.0, 0.0, 0.0),
@@ -321,7 +316,15 @@ fn cornell_box_scene() {
         white.clone(),
     ));
 
-    let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.65, 0.05, 0.05)));
+    let diffuse_light = Arc::new(DiffuseLight::from_rgb(Vec3::new(25.0, 25.0, 25.0)));
+    world.add_light(Quad::new(
+        Vec3::new(343.0, 554.0, 332.0),
+        Vec3::new(-130.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, -105.0),
+        diffuse_light,
+    ));
+
+    let color_tex = Arc::new(SolidTexture::new(Vec3::ONE));
     let mat = Arc::new(PrincipledBSDF::new(
         color_tex, // base_color,
         0.01,      // metallic,
@@ -330,7 +333,7 @@ fn cornell_box_scene() {
         0.91,      // specular,
         0.91,      // specular_tint,
         1.5,       // ior,
-        0.01,      // spec_trans,
+        0.91,      // spec_trans,
         0.91,      // sheen,
         0.91,      // sheen_tint,
         0.91,      // clearcoat,
@@ -386,7 +389,7 @@ fn cornell_box_scene() {
     camera.focal_length = 10.0;
     camera.defocus_angle = 0.0;
 
-    camera.ambient_light = Vec3::ZERO;
+    camera.environment = EnvironmentType::Color(Vec3::ZERO);
 
     camera.init();
     camera.render(&world, "demo/cornell.png");
@@ -394,75 +397,41 @@ fn cornell_box_scene() {
 
 fn test_scene() {
     let mut world = World::new();
-    let material_ground = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.8, 0.8, 0.0)));
-    let material_center = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.1, 0.2, 0.5)));
-    // let material_left = Arc::new(MetalBRDF::new(Vec3::new(0.8, 0.1, 0.2), 0.3));
-    // let material_left = Arc::new(GlassBSDF::new(0.1, 1.5));
-    // let material_left = Arc::new(ClearcoatBRDF::new(0.5));
 
-    let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.8, 0.2, 0.2)));
-    // let tex1 = SolidTexture::new(Vec3::new(0.2, 0.3, 0.1));
-    // let tex2 = SolidTexture::new(Vec3::new(0.9, 0.9, 0.9));
-    // let color_tex = Arc::new(CheckerTexture::new(0.32, Arc::new(tex1), Arc::new(tex2)));
-    let material_left = Arc::new(PrincipledBSDF::new(
-        color_tex, // base_color,
-        0.00,      // metallic,
-        0.91,      // roughness,
-        0.01,      // subsurface,
-        0.00,      // specular,
-        0.01,      // specular_tint,
-        1.5,       // ior,
-        0.09,      // spec_trans,
-        0.01,      // sheen,
-        0.01,      // sheen_tint,
-        0.01,      // clearcoat,
-        0.01,      // clearcoat_gloss,
-    ));
-    // let material_left = Arc::new(Refractive::new(1.5));
-    let material_right = Arc::new(MetalBRDF::from_rgb(Vec3::new(0.8, 0.1, 0.2), 0.3));
+    let my_mat = Arc::new(MetalBRDF::from_rgb(Vec3::ONE, 0.1));
+    world.add_object(Sphere::new_still(9.0, Vec3::new(4.0, 2.0, 0.0), my_mat));
 
-    world.add_object(Sphere::new_still(
-        100.0,
-        Vec3::new(0.0, -100.5, -1.0),
-        material_ground,
-    ));
-    world.add_object(Sphere::new_still(
-        0.5,
-        Vec3::new(0.0, 0.0, -1.2),
-        material_center,
-    ));
-    world.add_object(Sphere::new_still(
-        0.5,
-        Vec3::new(-1.0, 0.0, -1.0),
-        material_left,
-    ));
-    world.add_object(Sphere::new_still(
-        0.5,
-        Vec3::new(1.0, 0.0, -1.0),
-        material_right,
+    let diffuse_light = Arc::new(DiffuseLight::from_rgb(Vec3::new(10.0, 10.0, 10.0)));
+    world.add_object(Quad::new(
+        Vec3::new(-2.0, 6.5, 0.0),
+        Vec3::new(4.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 2.0),
+        diffuse_light,
     ));
 
     world.build_bvh();
 
     let mut camera = Camera::new();
     camera.aspect_ratio = 16.0 / 9.0;
-    camera.image_width = 500;
+    camera.image_width = 400;
     camera.samples_per_pixel = 1000;
-    camera.max_depth = 20;
+    camera.max_depth = 50;
 
     camera.vfov = 90.0;
-    camera.look_from = Vec3::ZERO;
-    camera.look_at = -Vec3::Z;
-    camera.vup = Vec3::Y;
+    camera.look_from = Vec3::new(0.0, 3.0, 17.0);
+    camera.look_at = Vec3::new(0.0, 2.0, 0.0);
+    camera.vup = Vec3::new(0.0, 1.0, 0.0);
 
     camera.blur_strength = 0.5;
     camera.focal_length = 10.0;
     camera.defocus_angle = 0.0;
 
-    camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
+    // camera.environment = EnvironmentType::Color(Vec3::new(0.2, 0.2, 0.2));
+    let env_map = ImageTexture::new("assets/envmap.jpg");
+    camera.environment = EnvironmentType::Map(Arc::new(env_map));
 
     camera.init();
-    camera.render(&world, "demo/test.png");
+    camera.render(&world, "demo/lights.png");
 }
 
 fn bunny_scene() {
@@ -528,7 +497,7 @@ fn bunny_scene() {
     camera.focal_length = 10.0;
     camera.defocus_angle = 0.0;
 
-    camera.ambient_light = Vec3::new(0.7, 0.8, 1.0);
+    camera.environment = EnvironmentType::Color(Vec3::new(0.7, 0.8, 1.0));
 
     camera.init();
     camera.render(&world, "demo/bunny.png");
@@ -536,7 +505,7 @@ fn bunny_scene() {
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
 
-    let x = 5;
+    let x = 6;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),

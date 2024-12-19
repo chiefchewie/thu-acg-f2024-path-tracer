@@ -1,4 +1,5 @@
 use crate::bsdf::BxDFMaterial;
+use crate::vec3::Vec3;
 use crate::{interval::Interval, ray::Ray};
 
 pub mod aabb;
@@ -38,4 +39,5 @@ pub trait Hittable: Send + Sync {
     fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo>;
     fn bounding_box(&self) -> AABB;
     fn material(&self) -> Option<&dyn BxDFMaterial>;
+    fn sample_surface(&self, hit_info: &HitInfo, time: f64) -> Option<(Vec3, Vec3, f64)>;
 }

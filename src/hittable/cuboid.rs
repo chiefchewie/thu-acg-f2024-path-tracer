@@ -74,4 +74,8 @@ impl Hittable for Cuboid {
     fn material(&self) -> Option<&dyn crate::bsdf::BxDFMaterial> {
         Some(self.material.as_ref())
     }
+
+    fn sample_surface(&self, hit_info: &super::HitInfo, time: f64) -> Option<(Vec3, Vec3, f64)> {
+        self.sides.sample_surface(hit_info, time)
+    }
 }

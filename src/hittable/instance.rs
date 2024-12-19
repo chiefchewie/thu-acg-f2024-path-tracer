@@ -60,4 +60,8 @@ impl Hittable for Instance {
     fn material(&self) -> Option<&dyn crate::bsdf::BxDFMaterial> {
         self.object.material()
     }
+
+    fn sample_surface(&self, hit_info: &HitInfo, time: f64) -> Option<(Vec3, Vec3, f64)> {
+        self.object.sample_surface(hit_info, time)
+    }
 }

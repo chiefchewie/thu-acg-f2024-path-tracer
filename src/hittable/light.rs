@@ -28,4 +28,8 @@ impl Hittable for PointLight {
     fn material(&self) -> Option<&dyn crate::bsdf::BxDFMaterial> {
         None
     }
+
+    fn sample_surface(&self, _hit_info: &super::HitInfo, _time: f64) -> Option<(Vec3, Vec3, f64)> {
+        None
+    }
 }

@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use rand::Rng;
+
 use crate::interval::Interval;
 
 use super::{BVHNode, Hittable, AABB, BVH};
@@ -28,6 +30,18 @@ impl HittableList {
         if !self.objects.is_empty() {
             self.bvh = Some(BVH::build(self.objects.clone()));
         }
+    }
+
+    pub fn get(&self, i: usize) -> &Arc<dyn Hittable> {
+        &self.objects[i]
+    }
+
+    pub fn len(&self) -> usize {
+        self.objects.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.objects.is_empty()
     }
 }
 
@@ -59,6 +73,16 @@ impl Hittable for HittableList {
 
     fn material(&self) -> Option<&dyn crate::bsdf::BxDFMaterial> {
         None
+    }
+
+    fn sample_surface(
+        &self,
+        hit_info: &super::HitInfo,
+        time: f64,
+    ) -> Option<(crate::vec3::Vec3, crate::vec3::Vec3, f64)> {
+        let i = rand::thread_rng().gen_range(0..self.objects.len());
+        let (l_pos, l_nor, l_pdf) = self.objects[i].sample_surface(hit_info, time)?;
+        Some((l_pos, l_nor, l_pdf / (self.objects.len() as f64)))
     }
 }
 
