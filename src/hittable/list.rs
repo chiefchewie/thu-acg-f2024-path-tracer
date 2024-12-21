@@ -77,16 +77,19 @@ impl Hittable for HittableList {
 
     fn sample(&self, origin: Vec3, time: f64) -> Option<crate::vec3::Vec3> {
         let i = thread_rng().gen_range(0..self.objects.len());
-        self.objects[i].sample(origin,time)
+        self.objects[i].sample(origin, time)
     }
 
     fn pdf(&self, origin: Vec3, direction: Vec3, time: f64) -> f64 {
-        let pdf = self
-            .objects
-            .iter()
-            .map(|obj| obj.pdf(origin, direction, time))
-            .sum::<f64>();
-        pdf / self.objects.len() as f64
+        if self.objects.is_empty() {
+            0.0
+        } else {
+            self.objects
+                .iter()
+                .map(|obj| obj.pdf(origin, direction, time))
+                .sum::<f64>()
+                / self.objects.len() as f64
+        }
     }
 }
 

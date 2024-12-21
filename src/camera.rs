@@ -196,40 +196,28 @@ impl Camera {
             }
 
             // MIS the scatter direction between light sampling and BSDF sampling
-            const P_LIGHT: f64 = 0.5;
-            const P_BSDF: f64 = 1.0 - P_LIGHT;
+            let p_light: f64 = if world.lights.is_empty() { 0.0 } else { 0.2 };
+            let p_bsdf: f64 = 1.0 - p_light;
 
             let r: f64 = rand::random();
-            let (next_dir, attenuation) = if r < P_LIGHT {
-                let Some(next_dir) = world.lights.sample(hit_info.point, ray.time()) else {
-                    break;
-                };
-
-                let light_pdf = world.lights.pdf(hit_info.point, next_dir, ray.time());
-                let bsdf_pdf = hit_info.mat.pdf(-ray.direction(), next_dir, &hit_info);
-
-                let pdf = P_LIGHT * light_pdf + P_BSDF * bsdf_pdf;
-                let attenuation = hit_info.mat.eval(-ray.direction(), next_dir, &hit_info) / pdf;
-
-                (next_dir, attenuation)
+            let dir = if r < p_light {
+                world.lights.sample(hit_info.point, ray.time())
             } else {
-                let Some(next_dir) = hit_info.mat.sample(&ray, &hit_info) else {
-                    break;
-                };
-
-                let light_pdf = world.lights.pdf(hit_info.point, next_dir, ray.time());
-                let bsdf_pdf = hit_info.mat.pdf(-ray.direction(), next_dir, &hit_info);
-
-                let pdf = P_LIGHT * light_pdf + P_BSDF * bsdf_pdf;
-                let attenuation = hit_info.mat.eval(-ray.direction(), next_dir, &hit_info) / pdf;
-
-                (next_dir, attenuation)
+                hit_info.mat.sample(&ray, &hit_info)
             };
 
-            let eps = EPS * next_dir.dot(hit_info.geometric_normal).signum();
+            let Some(dir) = dir else {
+                break;
+            };
+            let bsdf_pdf = hit_info.mat.pdf(-ray.direction(), dir, &hit_info);
+            let light_pdf = world.lights.pdf(hit_info.point, dir, ray.time());
+            let pdf = p_bsdf * bsdf_pdf + p_light * light_pdf;
+            let brdf = hit_info.mat.eval(-ray.direction(), dir, &hit_info);
+            let attenuation = brdf / pdf;
+            let eps = EPS * dir.dot(hit_info.geometric_normal).signum();
             let next_ray = Ray::new(
                 hit_info.point + eps * hit_info.geometric_normal,
-                next_dir,
+                dir,
                 ray.time(),
             );
 
