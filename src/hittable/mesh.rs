@@ -1,6 +1,6 @@
 // src/hittable/mesh.rs
 use std::sync::Arc;
-use tobj::LoadError;
+use tobj::{LoadError, Mesh};
 
 use crate::bsdf::{BxDFMaterial, MatPtr};
 use crate::hittable::{HitInfo, Hittable, AABB};
@@ -146,16 +146,12 @@ pub struct TriangleMesh {
 }
 
 impl TriangleMesh {
-    pub fn from_obj(path: &str, material: Arc<dyn BxDFMaterial>) -> Result<Self, LoadError> {
-        let obj = tobj::load_obj(path, &tobj::OFFLINE_RENDERING_LOAD_OPTIONS)?;
-        let (models, _) = obj;
-        let mesh = &models[0].mesh;
-
+    pub fn from_obj(scale: f64, mesh: &Mesh, material: Arc<dyn BxDFMaterial>) -> Result<Self, LoadError> {
         // get vertices
         let vertices: Vec<Vec3> = mesh
             .positions
             .chunks(3)
-            .map(|v| Vec3::new(v[0] as f64, v[1] as f64, v[2] as f64) * 10.0)
+            .map(|v| Vec3::new(v[0] as f64, v[1] as f64, v[2] as f64) * scale)
             .collect();
 
         // get normals

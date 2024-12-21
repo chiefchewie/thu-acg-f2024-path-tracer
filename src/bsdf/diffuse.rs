@@ -39,9 +39,9 @@ impl DiffuseBRDF {
         }
     }
 
-    pub fn from_textures(color_texture: ImageTexture, normal_map: Option<ImageTexture>) -> Self {
+    pub fn from_textures(color_texture: Arc<dyn Texture<Vec3>>, normal_map: Option<ImageTexture>) -> Self {
         Self {
-            base_color: Arc::new(color_texture),
+            base_color: color_texture,
             normal_map: normal_map.map(Arc::new),
         }
     }

@@ -3,6 +3,12 @@
 ## set up:
 1. install `rust` and make sure you have `cargo` working too
 2. in the root directory, do `cargo run` (debug build) or `cargo run -r` (release build)
+or you can run the executable directly
+
+command line arguments
+`-q` flag enable this for higher quality rendering. right now, high quality is FHD at 4000 samples per pixel, and low quality is 800 pixels wide at 100 samples per pixel. 
+
+`-s <scene>` pick the scene you would like to see. defaults to 1, which is the bouncing balls.
 
 ## demos:
 1. f bouncing balls demonstraing motion blur, textures. please edit main.rs to `x=1` and run. in the definition of `balls_scene`, can change the samples per pixel to 1000 to match demo
@@ -31,7 +37,5 @@ https://github.com/knightcrawler25/GLSL-PathTracer/blob/master/src/shaders/commo
 
 For help understanding importance sampling and multiple importance sampling
 https://lisyarus.github.io/blog/posts/multiple-importance-sampling.html#section-importance-sampling
-
-When I get to participating media (volumetric rendering) and multiple importance sampling, I will likely reference Ray Tracing Gems and the pbrt book for their ideas and example implementations.
 
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/cPlbGtcU)

@@ -194,7 +194,7 @@ fn cornell_box_scene(width: usize, spp: usize) {
     world.add_object(Sphere::new_still(
         135.0,
         Vec3::new(113.0, 170.0, 372.0),
-        mat
+        mat,
     ));
 
     let box1 = Arc::new(Cuboid::new(
@@ -235,7 +235,7 @@ fn cornell_box_scene(width: usize, spp: usize) {
     camera.render(&world, "demo/cornell.png");
 }
 
-fn test_scene(width: usize, spp: usize) {
+fn environment_map_scene(width: usize, spp: usize) {
     let mut world = World::new();
 
     let my_mat = Arc::new(MetalBRDF::from_rgb(Vec3::ONE, 0.001));
@@ -263,8 +263,8 @@ fn test_scene(width: usize, spp: usize) {
     camera.vup = Vec3::new(0.0, 1.0, 0.0);
 
     camera.blur_strength = 0.5;
-    camera.focal_length = 10.0;
-    camera.defocus_angle = 0.0;
+    camera.focal_length = 17.0;
+    camera.defocus_angle = 1.5;
 
     let env_map = ImageTexture::new("assets/grace_probe_latlong.hdr");
     camera.environment = EnvironmentType::Map(Arc::new(env_map));
@@ -275,12 +275,10 @@ fn test_scene(width: usize, spp: usize) {
 
 fn bunny_scene(width: usize, spp: usize) {
     let mut world = World::new();
+
     let material_ground = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.8, 0.8, 0.0)));
-    // let material_center = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.1, 0.2, 0.5)));
-    // let material_center = Arc::new(MetalBRDF::from_rgb(Vec3::ONE, 0.1));
     let material_center = Arc::new(GlassBSDF::basic(1.5));
     let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.8, 0.2, 0.2)));
-
     let material_left = Arc::new(PrincipledBSDF::new(
         color_tex, // base_color,
         0.00,      // metallic,
@@ -302,8 +300,13 @@ fn bunny_scene(width: usize, spp: usize) {
         Vec3::new(0.0, -100.5, -1.0),
         material_ground,
     ));
+
+    let bunny_obj =
+        tobj::load_obj("assets/bunny.obj", &tobj::OFFLINE_RENDERING_LOAD_OPTIONS).unwrap();
+    let (models, _) = bunny_obj;
+    let bunny_mesh = &models[0].mesh;
     world.add_object(Instance::new(
-        Arc::new(TriangleMesh::from_obj("assets/bunny.obj", material_center).unwrap()),
+        Arc::new(TriangleMesh::from_obj(10.0, bunny_mesh, material_center).unwrap()),
         Vec3::Z,
         0.0,
         Vec3::new(0.1, -0.8, -2.0),
@@ -325,7 +328,7 @@ fn bunny_scene(width: usize, spp: usize) {
     camera.aspect_ratio = 16.0 / 9.0;
     camera.image_width = width;
     camera.samples_per_pixel = spp;
-    camera.max_depth = 20;
+    camera.max_depth = 50;
 
     camera.vfov = 40.0;
     camera.look_from = Vec3::new(0.0, 0.1, 0.5);
@@ -342,6 +345,169 @@ fn bunny_scene(width: usize, spp: usize) {
     camera.render(&world, "demo/bunny.png");
 }
 
+fn my_scene(width: usize, spp: usize) {
+    let mut world = World::new();
+
+    let tex1 = SolidTexture::new(Vec3::new(0.2, 0.3, 0.1));
+    let tex2 = SolidTexture::new(Vec3::new(0.9, 0.9, 0.9));
+    let checker_tex = CheckerTexture::new(0.92, Arc::new(tex1), Arc::new(tex2));
+    let material_ground = Arc::new(DiffuseBRDF::from_textures(Arc::new(checker_tex), None));
+    world.add_object(Quad::new(
+        Vec3::new(-1000.0, 0.0, -1000.0),
+        Vec3::new(0.0, 0.0, 5000.0),
+        Vec3::new(5000.0, 0.0, 0.0),
+        material_ground,
+    ));
+
+    let mat1 = MetalBRDF::from_rgb(Vec3::ONE, 0.001);
+    world.add_object(Sphere::new_still(
+        2.0,
+        Vec3::new(-4.0, 2.0, 9.8),
+        Arc::new(mat1),
+    ));
+
+    let mat2 = GlassBSDF::basic(1.5);
+    world.add_object(Sphere::new_still(
+        1.0,
+        Vec3::new(4.0, 1.0, 6.0),
+        Arc::new(mat2),
+    ));
+
+    let box1 = Cuboid::new(
+        Vec3::ZERO,
+        Vec3::new(1.0, 2.0, 1.0),
+        Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.0, 0.5, 1.0))),
+    );
+    let box1 = Instance::new(Arc::new(box1), Vec3::Y, 0.5, Vec3::new(1.2, 0.0, 6.0));
+    world.add_object(box1);
+
+    let bunny_obj =
+        tobj::load_obj("assets/bunny.obj", &tobj::OFFLINE_RENDERING_LOAD_OPTIONS).unwrap();
+    let (models, _) = bunny_obj;
+    let bunny_mesh = &models[0].mesh;
+    let color_tex = Arc::new(SolidTexture::new(Vec3::ONE));
+    let bunny_material = Arc::new(PrincipledBSDF::new(
+        color_tex, // base_color,
+        0.91,      // metallic,
+        0.01,      // roughness,
+        0.01,      // subsurface,
+        0.01,      // specular,
+        0.91,      // specular_tint,
+        1.5,       // ior,
+        0.01,      // spec_trans,
+        0.91,      // sheen,
+        0.91,      // sheen_tint,
+        0.91,      // clearcoat,
+        0.01,      // clearcoat_gloss,
+    ));
+    world.add_object(Instance::new(
+        Arc::new(TriangleMesh::from_obj(10.0, bunny_mesh, bunny_material).unwrap()),
+        Vec3::Y,
+        3.14,
+        Vec3::new(0.1, -0.327, 5.0),
+    ));
+
+    let obj = tobj::load_obj("assets/spot.obj", &tobj::OFFLINE_RENDERING_LOAD_OPTIONS).unwrap();
+    let (models, _) = obj;
+    let mesh = &models[0].mesh;
+    let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.65, 0.05, 0.05)));
+    let obj_mat = Arc::new(PrincipledBSDF::new(
+        color_tex, // base_color,
+        0.01,      // metallic,
+        0.01,      // roughness,
+        0.91,      // subsurface,
+        0.01,      // specular,
+        0.01,      // specular_tint,
+        1.5,       // ior,
+        0.01,      // spec_trans,
+        0.91,      // sheen,
+        0.91,      // sheen_tint,
+        0.91,      // clearcoat,
+        0.01,      // clearcoat_gloss,
+    ));
+    world.add_object(Instance::new(
+        Arc::new(TriangleMesh::from_obj(0.65, mesh, obj_mat).unwrap()),
+        Vec3::Y,
+        0.87,
+        Vec3::new(-1.5, 2.8, 4.3),
+    ));
+
+    let obj = tobj::load_obj("assets/cow.obj", &tobj::OFFLINE_RENDERING_LOAD_OPTIONS).unwrap();
+    let (models, _) = obj;
+    let mesh = &models[0].mesh;
+    let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.05, 0.65, 0.05)));
+    let obj_mat = Arc::new(PrincipledBSDF::new(
+        color_tex, // base_color,
+        0.91,      // metallic,
+        0.21,      // roughness,
+        0.91,      // subsurface,
+        0.01,      // specular,
+        0.01,      // specular_tint,
+        1.5,       // ior,
+        0.01,      // spec_trans,
+        0.91,      // sheen,
+        0.91,      // sheen_tint,
+        0.91,      // clearcoat,
+        0.01,      // clearcoat_gloss,
+    ));
+    world.add_object(Instance::new(
+        Arc::new(TriangleMesh::from_obj(0.75, mesh, obj_mat).unwrap()),
+        Vec3::Y,
+        0.93,
+        Vec3::new(2.5, 3.8, 12.0),
+    ));
+
+    let light_mat = DiffuseLight::from_rgb(Vec3::new(20.0, 20.0, 10.0));
+    world.add_object(Sphere::new_still(
+        0.1,
+        Vec3::new(1.0, 0.1, 3.0),
+        Arc::new(light_mat),
+    ));
+
+    let mat4 = MetalBRDF::from_rgb(Vec3::new(0.6, 0.05, 0.05), 0.1);
+    world.add_object(Sphere::new_still(
+        0.2,
+        Vec3::new(0.0, 0.2, 3.0),
+        Arc::new(mat4),
+    ));
+
+    {
+        let base_color = Arc::new(SolidTexture::new(Vec3::new(0.7, 0.3, 0.3)));
+        let roughness = Arc::new(SolidTexture::new(0.3));
+        let mat5 = GlassBSDF::new(base_color, roughness, 0.0, 1.5);
+        world.add_object(Sphere::new_still(
+            0.3,
+            Vec3::new(1.2, 0.3, 3.4),
+            Arc::new(mat5),
+        ));
+    }
+
+    world.build_bvh();
+
+    let mut camera = Camera::new();
+    camera.aspect_ratio = 16.0 / 9.0;
+    camera.image_width = width;
+    camera.samples_per_pixel = spp;
+    camera.max_depth = 50;
+
+    camera.vfov = 60.0;
+    camera.look_from = Vec3::new(0.0, 1.5, 0.0);
+    camera.look_at = Vec3::new(0.0, 1.5, 100000.0);
+    camera.vup = Vec3::Y;
+
+    camera.blur_strength = 0.5;
+    camera.focal_length = 6.0;
+    camera.defocus_angle = 1.0;
+
+    camera.environment = EnvironmentType::Map(Arc::new(ImageTexture::new(
+        "assets/grace_probe_latlong.hdr",
+        // "assets/envmap.jpg",
+    )));
+
+    camera.init();
+    camera.render(&world, "demo/scene6.png");
+}
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -355,14 +521,15 @@ fn main() {
     env::set_var("RUST_BACKTRACE", "full");
     let args = Args::parse();
     let quality = args.quality;
-    let (width, spp) = if quality { (1920, 4000) } else { (800, 100) };
+    let (width, spp) = if quality { (1920, 4000) } else { (1920, 100) };
 
     match args.scene {
         1 => balls_scene(width, spp),
         2 => earth_scene(width, spp),
         3 => cornell_box_scene(width, spp),
-        4 => test_scene(width, spp),
+        4 => environment_map_scene(width, spp),
         5 => bunny_scene(width, spp),
+        6 => my_scene(width, spp),
         _ => (),
     }
 }
