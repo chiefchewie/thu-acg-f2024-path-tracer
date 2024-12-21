@@ -39,5 +39,10 @@ pub trait Hittable: Send + Sync {
     fn intersects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo>;
     fn bounding_box(&self) -> AABB;
     fn material(&self) -> Option<&dyn BxDFMaterial>;
-    fn sample_surface(&self, hit_info: &HitInfo, time: f64) -> Option<(Vec3, Vec3, f64)>;
+
+    /// sample a point P on the surface of the hittable
+    fn sample(&self, origin: Vec3, time: f64) -> Option<Vec3>;
+
+    /// pdf of point P on surface
+    fn pdf(&self, origin: Vec3, direction: Vec3, time: f64) -> f64;
 }

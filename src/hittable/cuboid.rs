@@ -75,7 +75,11 @@ impl Hittable for Cuboid {
         Some(self.material.as_ref())
     }
 
-    fn sample_surface(&self, hit_info: &super::HitInfo, time: f64) -> Option<(Vec3, Vec3, f64)> {
-        self.sides.sample_surface(hit_info, time)
+    fn sample(&self, origin:Vec3, time: f64) -> Option<Vec3> {
+        self.sides.sample(origin, time)
+    }
+
+    fn pdf(&self, origin: Vec3, direction: Vec3, time: f64) -> f64 {
+        self.sides.pdf(origin, direction, time)
     }
 }

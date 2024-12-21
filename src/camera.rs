@@ -2,7 +2,8 @@ use rayon::prelude::*;
 use std::{f64::consts::PI, sync::Arc, time::Instant};
 
 use crate::{
-    hittable::World,
+    bsdf::EPS,
+    hittable::{Hittable, World},
     interval::Interval,
     ray::Ray,
     texture::{ImageTexture, Texture},
@@ -138,7 +139,7 @@ impl Camera {
 
     fn sample_environment(&self, ray: &Ray) -> Vec3 {
         match self.environment {
-            EnvironmentType::Color(ref color) => color.clone(),
+            EnvironmentType::Color(ref color) => *color,
             EnvironmentType::Map(ref env_map) => {
                 let theta = ray.direction().y.acos();
                 let phi = ray.direction().z.atan2(ray.direction().x);
@@ -170,10 +171,9 @@ impl Camera {
         let eps = 1e-3;
         let min_bounces = 5; // TODO make min_bounces a parameter
 
-        let mut ray = self.generate_ray(r, c);
-
         let mut radiance = Vec3::ZERO;
         let mut throughput = Vec3::ONE;
+        let mut ray = self.generate_ray(r, c);
         for bounces in 0..self.max_depth {
             let Some((hit_info, _is_light)) =
                 world.intersect_all(&ray, Interval::new(eps, f64::INFINITY))
@@ -182,21 +182,7 @@ impl Camera {
                 break;
             };
 
-            // Direct lighting with light sampling (NEE???)
-            if let Some((light_pos, light_normal, le, light_pdf)) =
-                world.sample_light(&hit_info, ray.time())
-            {
-                let normal = hit_info.shading_normal;
-                let light_dir = (light_pos - hit_info.point).normalize();
-                let g = geometric_factor(hit_info.point, light_pos, light_normal);
-                let mat_pdf = hit_info.mat.pdf(-ray.direction(), light_dir, &hit_info);
-                let mis_weight = balance_heuristic(light_pdf, mat_pdf * g);
-                let brdf = hit_info.mat.eval(-ray.direction(), light_dir, &hit_info);
-                radiance +=
-                    throughput * brdf * le * mis_weight * g * normal.dot(light_dir).max(0.0)
-                        / light_pdf;
-            }
-
+            // emission from object that we just hit
             let emission = hit_info.mat.emitted(hit_info.u, hit_info.v, hit_info.point);
             radiance += throughput * emission;
 
@@ -209,25 +195,49 @@ impl Camera {
                 throughput /= p;
             }
 
-            // Indirect lighting with BSDF sampling
-            let Some((attenuation, next_ray)) = hit_info.mat.scatter(&ray, &hit_info) else {
-                break;
+            // MIS the scatter direction between light sampling and BSDF sampling
+            const P_LIGHT: f64 = 0.5;
+            const P_BSDF: f64 = 1.0 - P_LIGHT;
+
+            let r: f64 = rand::random();
+            let (next_dir, attenuation) = if r < P_LIGHT {
+                let Some(next_dir) = world.lights.sample(hit_info.point, ray.time()) else {
+                    break;
+                };
+
+                let light_pdf = world.lights.pdf(hit_info.point, next_dir, ray.time());
+                let bsdf_pdf = hit_info.mat.pdf(-ray.direction(), next_dir, &hit_info);
+
+                let pdf = P_LIGHT * light_pdf + P_BSDF * bsdf_pdf;
+                let attenuation = hit_info.mat.eval(-ray.direction(), next_dir, &hit_info) / pdf;
+
+                (next_dir, attenuation)
+            } else {
+                let Some(next_dir) = hit_info.mat.sample(&ray, &hit_info) else {
+                    break;
+                };
+
+                let light_pdf = world.lights.pdf(hit_info.point, next_dir, ray.time());
+                let bsdf_pdf = hit_info.mat.pdf(-ray.direction(), next_dir, &hit_info);
+
+                let pdf = P_LIGHT * light_pdf + P_BSDF * bsdf_pdf;
+                let attenuation = hit_info.mat.eval(-ray.direction(), next_dir, &hit_info) / pdf;
+
+                (next_dir, attenuation)
             };
+
+            let eps = EPS * next_dir.dot(hit_info.geometric_normal).signum();
+            let next_ray = Ray::new(
+                hit_info.point + eps * hit_info.geometric_normal,
+                next_dir,
+                ray.time(),
+            );
+
             throughput *= attenuation;
             ray = next_ray;
         }
-        radiance / 2.0
+        radiance
     }
-}
-
-fn geometric_factor(p_surface: Vec3, p_light: Vec3, normal: Vec3) -> f64 {
-    let dir = (p_light - p_surface).normalize();
-    let len_squared = (p_light - p_surface).length_squared();
-    normal.dot(dir).abs() / len_squared
-}
-
-fn balance_heuristic(p: f64, q: f64) -> f64 {
-    p / (p + q)
 }
 
 impl Default for Camera {

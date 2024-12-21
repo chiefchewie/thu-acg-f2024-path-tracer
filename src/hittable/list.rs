@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use rand::Rng;
+use rand::{thread_rng, Rng};
 
-use crate::interval::Interval;
+use crate::{interval::Interval, vec3::Vec3};
 
 use super::{BVHNode, Hittable, AABB, BVH};
 
@@ -75,14 +75,18 @@ impl Hittable for HittableList {
         None
     }
 
-    fn sample_surface(
-        &self,
-        hit_info: &super::HitInfo,
-        time: f64,
-    ) -> Option<(crate::vec3::Vec3, crate::vec3::Vec3, f64)> {
-        let i = rand::thread_rng().gen_range(0..self.objects.len());
-        let (l_pos, l_nor, l_pdf) = self.objects[i].sample_surface(hit_info, time)?;
-        Some((l_pos, l_nor, l_pdf / (self.objects.len() as f64)))
+    fn sample(&self, origin: Vec3, time: f64) -> Option<crate::vec3::Vec3> {
+        let i = thread_rng().gen_range(0..self.objects.len());
+        self.objects[i].sample(origin,time)
+    }
+
+    fn pdf(&self, origin: Vec3, direction: Vec3, time: f64) -> f64 {
+        let pdf = self
+            .objects
+            .iter()
+            .map(|obj| obj.pdf(origin, direction, time))
+            .sum::<f64>();
+        pdf / self.objects.len() as f64
     }
 }
 

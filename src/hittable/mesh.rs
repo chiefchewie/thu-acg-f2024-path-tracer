@@ -1,5 +1,4 @@
 // src/hittable/mesh.rs
-use rand::{thread_rng, Rng};
 use std::sync::Arc;
 use tobj::LoadError;
 
@@ -120,19 +119,25 @@ impl Hittable for Triangle {
         Some(self.material.as_ref())
     }
 
-    fn sample_surface(&self, hit_info: &HitInfo, _time: f64) -> Option<(Vec3, Vec3, f64)> {
-        let u = hit_info.u;
-        let v = hit_info.v;
+    fn sample(&self,origin: Vec3, _time: f64) -> Option<Vec3> {
+        let u: f64 = rand::random();
+        let v: f64 = rand::random();
         let w = 1.0 - u - v;
-        let normal = if let Some(normals) = self.normals {
-            (normals[0] * w + normals[1] * u + normals[2] * v).normalize()
-        } else {
-            (self.vertices[1] - self.vertices[0])
-                .cross(self.vertices[2] - self.vertices[0])
-                .normalize()
-        };
         let point = self.vertices[0] * w + self.vertices[1] * u + self.vertices[2] * v;
-        Some((point, normal, 1.0 / self.area()))
+        let dir = (point - origin).normalize();
+        Some(dir)
+    }
+
+    fn pdf(&self, origin: Vec3, direction: Vec3, time: f64) -> f64 {
+        let ray = Ray::new(origin, direction, time);
+        if let Some(hit) = self.intersects(&ray, Interval::new(0.0, f64::INFINITY)) {
+            let area = self.area();
+            let dist = hit.dist;
+            let cos_theta = direction.dot(hit.geometric_normal).abs();
+            dist * dist / (cos_theta * area)
+        } else {
+            0.0
+        }
     }
 }
 
@@ -209,9 +214,11 @@ impl Hittable for TriangleMesh {
         None
     }
 
-    fn sample_surface(&self, hit_info: &HitInfo, time: f64) -> Option<(Vec3, Vec3, f64)> {
-        let i = thread_rng().gen_range(0..self.triangles.len());
-        let (pos, nor, pdf) = self.triangles.get(i).sample_surface(hit_info, time)?;
-        Some((pos, nor, pdf / (self.triangles.len() as f64)))
+    fn sample(&self, origin: Vec3, time: f64) -> Option<Vec3> {
+        self.triangles.sample(origin,time)
+    }
+
+    fn pdf(&self, origin: Vec3, direction: Vec3, time: f64) -> f64 {
+        self.triangles.pdf(origin, direction, time)
     }
 }

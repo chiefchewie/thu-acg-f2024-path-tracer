@@ -29,7 +29,14 @@ impl Hittable for PointLight {
         None
     }
 
-    fn sample_surface(&self, _hit_info: &super::HitInfo, _time: f64) -> Option<(Vec3, Vec3, f64)> {
-        None
+    fn sample(&self, origin: Vec3, _time: f64) -> Option<Vec3> {
+        Some((self.position - origin).normalize())
+    }
+
+    fn pdf(&self, origin: Vec3, direction: Vec3, time: f64) -> f64 {
+        let _ = time;
+        let _ = direction;
+        let _ = origin;
+        todo!()
     }
 }

@@ -1,12 +1,10 @@
-use rand::{thread_rng, Rng};
-
 use crate::{interval::Interval, ray::Ray, vec3::Vec3};
 
 use super::{HitInfo, Hittable, HittableList};
 
 pub struct World {
-    objects: HittableList,
-    lights: HittableList,
+    pub objects: HittableList,
+    pub lights: HittableList,
 }
 
 impl World {
@@ -37,22 +35,6 @@ impl World {
             .is_none()
     }
 
-    pub fn sample_light(&self, hit_info: &HitInfo, time: f64) -> Option<(Vec3, Vec3, Vec3, f64)> {
-        if self.lights.is_empty() {
-            return None;
-        }
-        let i = thread_rng().gen_range(0..self.lights.len());
-        let (l_pos, l_nor, l_pdf) = self.lights.get(i).sample_surface(hit_info, time)?;
-        if self.shadow_ray(hit_info.point, l_pos, time) {
-            let le = self.lights.get(i).material().map_or(Vec3::ZERO, |m| {
-                m.emitted(hit_info.u, hit_info.v, hit_info.point)
-            });
-            Some((l_pos, l_nor, le, l_pdf / self.lights.len() as f64))
-        } else {
-            None
-        }
-    }
-
     /// intersect with t in (t_min, t_max)
     pub fn intersect_objects(&self, ray: &Ray, ray_t: Interval) -> Option<HitInfo> {
         self.objects.intersects(ray, ray_t)
@@ -74,7 +56,7 @@ impl World {
                     Some((light, true))
                 } else {
                     Some((obj, false))
-                }    
+                }
             }
         }
     }

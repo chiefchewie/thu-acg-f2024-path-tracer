@@ -107,38 +107,65 @@ impl Hittable for Sphere {
         Some(self.material.as_ref())
     }
 
-    fn sample_surface(&self, hit_info: &HitInfo, time: f64) -> Option<(Vec3, Vec3, f64)> {
-        let current_center = self.get_position(time);
-        // Create coordinate system aligned with hit normal
-        let w = hit_info.geometric_normal;
-        let a = if w.x.abs() > 0.9 {
-            Vec3::new(0.0, 1.0, 0.0)
-        } else {
-            Vec3::new(1.0, 0.0, 0.0)
-        };
-        let v = w.cross(a).normalize();
-        let u = w.cross(v);
-
-        // Sample random point on hemisphere
-        let r1 = rand::random::<f64>();
-        let r2 = rand::random::<f64>();
-        let cos_theta = r1.sqrt();
-        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
-        let phi = 2.0 * std::f64::consts::PI * r2;
-
-        // Convert to cartesian coordinates
-        let direction = Vec3::new(phi.cos() * sin_theta, phi.sin() * sin_theta, cos_theta);
-
-        // Transform to world space
-        let world_direction = u * direction.x + v * direction.y + w * direction.z;
-
-        // Get point on sphere
-        let point = current_center + world_direction * self.radius;
-        let normal = (point - current_center).normalize();
-
-        // PDF is 1/(2*PI) for hemisphere sampling
-        let pdf = 1.0 / (2.0 * std::f64::consts::PI);
-
-        Some((point, normal, pdf))
+    fn sample(&self, origin: Vec3, time: f64) -> Option<Vec3> {
+        let u: f64 = rand::random();
+        let v: f64 = rand::random();
+        let theta = 2.0 * PI * u;
+        let phi = f64::acos(2.0 * v - 1.0);
+        let x = phi.sin() * theta.cos();
+        let y = phi.sin() * theta.sin();
+        let z = phi.cos();
+        let point = self.get_position(time) + Vec3::new(x, y, z) * self.radius;
+        let dir = (point - origin).normalize();
+        Some(dir)
     }
+
+    fn pdf(&self, origin: Vec3, direction: Vec3, time: f64) -> f64 {
+        if let Some(_hit) = self.intersects(
+            &Ray::new(origin, direction, time),
+            Interval::new(0.0, f64::INFINITY),
+        ) {
+            let r2 = self.radius * self.radius;
+            let solid_angle =
+                2.0 * PI * (1.0 - r2 / (self.get_position(time) - origin).length_squared()).sqrt();
+            1.0 / solid_angle
+        } else {
+            0.0
+        }
+    }
+
+    // fn sample_surface(&self, hit_info: &HitInfo, time: f64) -> Option<(Vec3, Vec3, f64)> {
+    //     let current_center = self.get_position(time);
+    //     // Create coordinate system aligned with hit normal
+    //     let w = hit_info.geometric_normal;
+    //     let a = if w.x.abs() > 0.9 {
+    //         Vec3::new(0.0, 1.0, 0.0)
+    //     } else {
+    //         Vec3::new(1.0, 0.0, 0.0)
+    //     };
+    //     let v = w.cross(a).normalize();
+    //     let u = w.cross(v);
+
+    //     // Sample random point on hemisphere
+    //     let r1 = rand::random::<f64>();
+    //     let r2 = rand::random::<f64>();
+    //     let cos_theta = r1.sqrt();
+    //     let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+    //     let phi = 2.0 * std::f64::consts::PI * r2;
+
+    //     // Convert to cartesian coordinates
+    //     let direction = Vec3::new(phi.cos() * sin_theta, phi.sin() * sin_theta, cos_theta);
+
+    //     // Transform to world space
+    //     let world_direction = u * direction.x + v * direction.y + w * direction.z;
+
+    //     // Get point on sphere
+    //     let point = current_center + world_direction * self.radius;
+    //     let normal = (point - current_center).normalize();
+
+    //     // PDF is 1/(2*PI) for hemisphere sampling
+    //     let pdf = 1.0 / (2.0 * std::f64::consts::PI);
+
+    //     Some((point, normal, pdf))
+    // }
 }

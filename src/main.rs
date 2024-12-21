@@ -2,10 +2,7 @@ use std::env;
 use std::sync::Arc;
 
 use path_tracer::{
-    bsdf::{
-        diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, mix::MixBxDf,
-        principled::PrincipledBSDF,
-    },
+    bsdf::{diffuse::DiffuseBRDF, glass::GlassBSDF, metal::MetalBRDF, mix::MixBxDf, principled::PrincipledBSDF},
     camera::{Camera, EnvironmentType},
     hittable::{Instance, PointLight, Quad, Sphere, TriangleMesh, World},
     material::DiffuseLight,
@@ -377,7 +374,7 @@ fn cornell_box_scene() {
     let mut camera = Camera::new();
     camera.aspect_ratio = 1.0;
     camera.image_width = 900;
-    camera.samples_per_pixel = 1000;
+    camera.samples_per_pixel = 5000;
     camera.max_depth = 20;
 
     camera.vfov = 40.0;
@@ -505,7 +502,7 @@ fn bunny_scene() {
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
 
-    let x = 6;
+    let x = 5;
     match x {
         1 => balls_scene(),
         2 => earth_scene(),

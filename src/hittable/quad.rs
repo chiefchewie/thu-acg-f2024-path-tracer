@@ -1,5 +1,3 @@
-use rand::{thread_rng, Rng};
-
 use crate::{bsdf::MatPtr, interval::Interval, ray::Ray, vec3::Vec3};
 
 use super::{hit_info::HitInfo, Hittable, AABB};
@@ -79,12 +77,23 @@ impl Hittable for Quad {
         Some(self.material.as_ref())
     }
 
-    fn sample_surface(&self, _hit_info: &HitInfo, _time: f64) -> Option<(Vec3, Vec3, f64)> {
-        let u: f64 = thread_rng().gen();
-        let v: f64 = thread_rng().gen();
-        let normal = self.normal;
+    fn sample(&self, origin: Vec3, _time: f64) -> Option<Vec3> {
+        let u: f64 = rand::random();
+        let v: f64 = rand::random();
         let point = self.q + self.u * u + self.v * v;
-        let area = self.u.cross(self.v).length();
-        Some((point, normal, 1.0 / area))
+        let dir = (point - origin).normalize();
+        Some(dir)
+    }
+
+    fn pdf(&self, origin: Vec3, direction: Vec3, time: f64) -> f64 {
+        let ray = Ray::new(origin, direction, time);
+        if let Some(hit) = self.intersects(&ray, Interval::new(0.0, f64::INFINITY)) {
+            let area = self.u.cross(self.v).length();
+            let dist = hit.dist;
+            let cos_theta = ray.direction().dot(hit.geometric_normal).abs();
+            (dist * dist) / (cos_theta * area)
+        } else {
+            0.0
+        }
     }
 }

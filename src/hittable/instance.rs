@@ -61,7 +61,16 @@ impl Hittable for Instance {
         self.object.material()
     }
 
-    fn sample_surface(&self, hit_info: &HitInfo, time: f64) -> Option<(Vec3, Vec3, f64)> {
-        self.object.sample_surface(hit_info, time)
+    fn sample(&self, origin: Vec3, time: f64) -> Option<Vec3> {
+        let local_origin = self.transform.inverse().transform_point3(origin);
+        let local_dir = self.object.sample(local_origin, time);
+        let world_dir = local_dir.map(|dir| self.transform.transform_vector3(dir));
+        world_dir
+    }
+
+    fn pdf(&self, origin: Vec3, direction: Vec3, time: f64) -> f64 {
+        let local_origin = self.transform.inverse().transform_point3(origin);
+        let local_dir = self.transform.inverse().transform_vector3(direction);
+        self.object.pdf(local_origin, local_dir, time)
     }
 }

@@ -1,4 +1,4 @@
-use crate::{bsdf::BxDFMaterial, hittable::HitInfo, interval::Interval, ray::Ray};
+use crate::{bsdf::BxDFMaterial, hittable::HitInfo, interval::Interval, ray::Ray, vec3::Vec3};
 use std::{cmp::Ordering, sync::Arc};
 
 use super::{Hittable, AABB};
@@ -174,11 +174,11 @@ impl Hittable for BVHNode {
         None
     }
 
-    fn sample_surface(
-        &self,
-        _hit_info: &HitInfo,
-        _time: f64,
-    ) -> Option<(crate::vec3::Vec3, crate::vec3::Vec3, f64)> {
+    fn sample(&self, _origin: Vec3, _time: f64) -> Option<crate::vec3::Vec3> {
         None
+    }
+
+    fn pdf(&self, _origin: crate::vec3::Vec3, _direction: crate::vec3::Vec3, _time: f64) -> f64 {
+        0.0
     }
 }
