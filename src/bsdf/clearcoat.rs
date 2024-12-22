@@ -22,12 +22,12 @@ impl ClearcoatBRDF {
 impl BxDFMaterial for ClearcoatBRDF {
     fn sample(&self, ray: &Ray, info: &HitInfo) -> Option<Vec3> {
         let view_dir = -ray.direction();
-        let v = to_local(info.geometric_normal, view_dir);
+        let v = to_local(info.shading_normal, view_dir);
 
         let h = gtr1::sample_microfacet_normal(0.25);
         let specular_dir_local = (-v).reflect(h);
-        let specular_dir = to_world(info.geometric_normal, specular_dir_local);
-        if specular_dir.dot(info.geometric_normal) <= 0.0 {
+        let specular_dir = to_world(info.shading_normal, specular_dir_local);
+        if specular_dir.dot(info.shading_normal) <= 0.0 {
             None
         } else {
             Some(specular_dir)
@@ -35,8 +35,8 @@ impl BxDFMaterial for ClearcoatBRDF {
     }
 
     fn pdf(&self, view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> f64 {
-        let v = to_local(info.geometric_normal, view_dir);
-        let l = to_local(info.geometric_normal, light_dir);
+        let v = to_local(info.shading_normal, view_dir);
+        let l = to_local(info.shading_normal, light_dir);
         let h = (v + l).normalize();
         let pdf_h =
             ggx::G1(v, 0.25) * v.dot(h).abs() * gtr1::D(l.dot(h).abs(), self.alpha_g) / v.z.abs();
@@ -45,8 +45,8 @@ impl BxDFMaterial for ClearcoatBRDF {
     }
 
     fn eval(&self, view_dir: Vec3, light_dir: Vec3, info: &HitInfo) -> Vec3 {
-        let v = to_local(info.geometric_normal, view_dir);
-        let l = to_local(info.geometric_normal, light_dir);
+        let v = to_local(info.shading_normal, view_dir);
+        let l = to_local(info.shading_normal, light_dir);
         let h = (v + l).normalize();
 
         let d = gtr1::D(l.dot(h).abs(), self.alpha_g);

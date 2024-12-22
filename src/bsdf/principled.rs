@@ -341,7 +341,7 @@ impl BxDFMaterial for PrincipledBSDF {
             let c_tint = tint(base_color);
             let c_sheen = Vec3::ONE.lerp(c_tint, self.sheen_tint);
             let sheen_term = self.sheen * c_sheen * schlick_weight(l.dot(h).abs());
-            let diffuse_term = self.eval_diffuse(c_tint, v, l, h);
+            let diffuse_term = self.eval_diffuse(base_color, v, l, h);
             brdf += diffuse_wt * (diffuse_term + sheen_term)
         }
         if specular_p > 0.0 && reflect {

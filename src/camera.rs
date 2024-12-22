@@ -196,7 +196,7 @@ impl Camera {
             }
 
             // MIS the scatter direction between light sampling and BSDF sampling
-            let p_light: f64 = if world.lights.is_empty() { 0.0 } else { 0.2 };
+            let p_light: f64 = if world.lights.is_empty() { 0.0 } else { 0.5 };
             let p_bsdf: f64 = 1.0 - p_light;
 
             let r: f64 = rand::random();

@@ -90,7 +90,7 @@ impl Hittable for Quad {
         if let Some(hit) = self.intersects(&ray, Interval::new(0.0, f64::INFINITY)) {
             let area = self.u.cross(self.v).length();
             let dist = hit.dist;
-            let cos_theta = ray.direction().dot(hit.geometric_normal).abs();
+            let cos_theta = ray.direction().dot(hit.shading_normal).abs();
             (dist * dist) / (cos_theta * area)
         } else {
             0.0

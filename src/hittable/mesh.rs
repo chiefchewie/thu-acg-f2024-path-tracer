@@ -133,7 +133,7 @@ impl Hittable for Triangle {
         if let Some(hit) = self.intersects(&ray, Interval::new(0.0, f64::INFINITY)) {
             let area = self.area();
             let dist = hit.dist;
-            let cos_theta = direction.dot(hit.geometric_normal).abs();
+            let cos_theta = direction.dot(hit.shading_normal).abs();
             dist * dist / (cos_theta * area)
         } else {
             0.0

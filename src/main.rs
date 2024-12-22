@@ -273,54 +273,77 @@ fn environment_map_scene(width: usize, spp: usize) {
     camera.render(&world, "demo/lights.png");
 }
 
-fn bunny_scene(width: usize, spp: usize) {
+fn bsdf_demo_scene(width: usize, spp: usize) {
     let mut world = World::new();
 
-    let material_ground = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.8, 0.8, 0.0)));
-    let material_center = Arc::new(GlassBSDF::basic(1.5));
-    let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.8, 0.2, 0.2)));
-    let material_left = Arc::new(PrincipledBSDF::new(
-        color_tex, // base_color,
-        0.00,      // metallic,
-        0.91,      // roughness,
-        0.01,      // subsurface,
-        0.00,      // specular,
-        0.01,      // specular_tint,
-        1.5,       // ior,
-        0.09,      // spec_trans,
-        0.01,      // sheen,
-        0.01,      // sheen_tint,
-        0.01,      // clearcoat,
-        0.01,      // clearcoat_gloss,
-    ));
-    let material_right = Arc::new(MetalBRDF::from_rgb(Vec3::new(0.8, 0.1, 0.2), 0.3));
+    // Diffuse with varying roughness
+    for i in 0..5 {
+        let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.65, 0.05, 0.05)));
+        let roughness = 0.1 + 0.2 * i as f64;
+        let mat = Arc::new(PrincipledBSDF::new(
+            color_tex, // base_color,
+            0.00,      // metallic,
+            roughness, // roughness,
+            0.01,      // subsurface,
+            0.01,      // specular,
+            0.01,      // specular_tint,
+            1.5,       // ior,
+            0.01,      // spec_trans,
+            0.01,      // sheen,
+            0.01,      // sheen_tint,
+            0.01,      // clearcoat,
+            0.01,      // clearcoat_gloss,
+        ));
+        let position = Vec3::new(-4.0 + i as f64, 1.0, -5.0);
+        let sphere = Sphere::new_still(0.5, position, mat);
+        world.add_object(sphere);
+    }
 
-    world.add_object(Sphere::new_still(
-        100.0,
-        Vec3::new(0.0, -100.5, -1.0),
-        material_ground,
-    ));
+    // Metal with varying roughness
+    for i in 0..5 {
+        let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.05, 0.65, 0.05)));
+        let roughness = 0.1 + 0.2 * i as f64;
+        let mat = Arc::new(PrincipledBSDF::new(
+            color_tex, // base_color,
+            0.99,      // metallic,
+            roughness, // roughness,
+            0.01,      // subsurface,
+            0.01,      // specular,
+            0.01,      // specular_tint,
+            1.5,       // ior,
+            0.01,      // spec_trans,
+            0.01,      // sheen,
+            0.01,      // sheen_tint,
+            0.01,      // clearcoat,
+            0.01,      // clearcoat_gloss,
+        ));
+        let position = Vec3::new(-4.0 + i as f64, 2.0, -5.0);
+        let sphere = Sphere::new_still(0.5, position, mat);
+        world.add_object(sphere);
+    }
 
-    let bunny_obj =
-        tobj::load_obj("assets/bunny.obj", &tobj::OFFLINE_RENDERING_LOAD_OPTIONS).unwrap();
-    let (models, _) = bunny_obj;
-    let bunny_mesh = &models[0].mesh;
-    world.add_object(Instance::new(
-        Arc::new(TriangleMesh::from_obj(10.0, bunny_mesh, material_center).unwrap()),
-        Vec3::Z,
-        0.0,
-        Vec3::new(0.1, -0.8, -2.0),
-    ));
-    world.add_object(Sphere::new_still(
-        0.5,
-        Vec3::new(-1.0, 0.0, -1.0),
-        material_left,
-    ));
-    world.add_object(Sphere::new_still(
-        0.5,
-        Vec3::new(1.0, 0.0, -1.0),
-        material_right,
-    ));
+    // Glass with varying roughness
+    for i in 0..5 {
+        let color_tex = Arc::new(SolidTexture::new(Vec3::new(0.25, 0.05, 0.65)));
+        let roughness = (0.1 + 0.2 * i as f64) * 0.3;
+        let mat = Arc::new(PrincipledBSDF::new(
+            color_tex, // base_color,
+            0.01,      // metallic,
+            roughness, // roughness,
+            0.01,      // subsurface,
+            0.01,      // specular,
+            0.01,      // specular_tint,
+            1.5,       // ior,
+            0.99,      // spec_trans,
+            0.01,      // sheen,
+            0.01,      // sheen_tint,
+            0.01,      // clearcoat,
+            0.01,      // clearcoat_gloss,
+        ));
+        let position = Vec3::new(-4.0 + i as f64, 3.0, -5.0);
+        let sphere = Sphere::new_still(0.5, position, mat);
+        world.add_object(sphere);
+    }
 
     world.build_bvh();
 
@@ -330,22 +353,22 @@ fn bunny_scene(width: usize, spp: usize) {
     camera.samples_per_pixel = spp;
     camera.max_depth = 50;
 
-    camera.vfov = 40.0;
-    camera.look_from = Vec3::new(0.0, 0.1, 0.5);
-    camera.look_at = Vec3::new(0.0, 0.1, 0.0);
+    camera.vfov = 60.0;
+    camera.look_from = Vec3::new(-2.0, 2.0, -1.0);
+    camera.look_at = camera.look_from + Vec3::new(0.0, 0.0, -1000.0);
     camera.vup = Vec3::Y;
 
     camera.blur_strength = 0.5;
-    camera.focal_length = 10.0;
+    camera.focal_length = 5.0;
     camera.defocus_angle = 0.0;
 
-    camera.environment = EnvironmentType::Color(Vec3::new(0.7, 0.8, 1.0));
+    camera.environment = EnvironmentType::Map(Arc::new(ImageTexture::new("assets/envmap.jpg")));
 
     camera.init();
-    camera.render(&world, "demo/bunny.png");
+    camera.render(&world, "demo/bsdf.png");
 }
 
-fn my_scene(width: usize, spp: usize) {
+fn everything_scene(width: usize, spp: usize) {
     let mut world = World::new();
 
     let tex1 = SolidTexture::new(Vec3::new(0.2, 0.3, 0.1));
@@ -508,6 +531,92 @@ fn my_scene(width: usize, spp: usize) {
     camera.render(&world, "demo/scene6.png");
 }
 
+fn normal_demo_scene(width: usize, spp: usize) {
+    let mut world = World::new();
+
+    let bricks_albedo = Arc::new(ImageTexture::new("assets/bricks/color.png"));
+    let bricks_normal = ImageTexture::new("assets/bricks/normal.png");
+    let material_with_normal = Arc::new(DiffuseBRDF::from_textures(
+        bricks_albedo.clone(),
+        Some(bricks_normal),
+    ));
+    let material_without_normal = Arc::new(DiffuseBRDF::from_textures(bricks_albedo.clone(), None));
+    let white = Arc::new(DiffuseBRDF::from_rgb(Vec3::new(0.73, 0.73, 0.73)));
+    world.add_object(Quad::new(
+        Vec3::new(555.0, 0.0, 0.0),
+        Vec3::new(0.0, 555.0, 0.0),
+        Vec3::new(0.0, 0.0, 555.0),
+        material_without_normal,
+    ));
+    world.add_object(Quad::new(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(0.0, 555.0, 0.0),
+        Vec3::new(0.0, 0.0, 555.0),
+        material_with_normal,
+    ));
+    world.add_object(Quad::new(
+        Vec3::new(0.0, 0.0, 0.0),
+        Vec3::new(555.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 555.0),
+        white.clone(),
+    ));
+    world.add_object(Quad::new(
+        Vec3::new(555.0, 555.0, 555.0),
+        Vec3::new(-555.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, -555.0),
+        white.clone(),
+    ));
+    world.add_object(Quad::new(
+        Vec3::new(0.0, 0.0, 555.0),
+        Vec3::new(555.0, 0.0, 0.0),
+        Vec3::new(0.0, 555.0, 0.0),
+        white.clone(),
+    ));
+
+    let diffuse_light = Arc::new(DiffuseLight::from_rgb(Vec3::new(27.0, 28.0, 20.0)));
+    world.add_light(Quad::new(
+        Vec3::new(343.0, 554.0, 332.0),
+        Vec3::new(-130.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, -105.0),
+        diffuse_light,
+    ));
+
+    let box1 = Arc::new(Cuboid::new(
+        Vec3::ZERO,
+        Vec3::new(165.0, 330.0, 165.0),
+        Arc::new(MetalBRDF::from_rgb(Vec3::splat(0.94), 0.1)),
+    ));
+    let box1 = Instance::new(box1, Vec3::Y, 0.261799, Vec3::new(265.0, 0.0, 295.0));
+    world.add_object(box1);
+
+    world.add_object(Sphere::new_still(
+        100.0,
+        Vec3::new(130.0, 100.0, 65.0),
+        Arc::new(GlassBSDF::basic(1.5)),
+    ));
+
+    world.build_bvh();
+    let mut camera = Camera::new();
+    camera.aspect_ratio = 1.0;
+    camera.image_width = width;
+    camera.samples_per_pixel = spp;
+    camera.max_depth = 50;
+
+    camera.vfov = 40.0;
+    camera.look_from = Vec3::new(278.0, 278.0, -800.0);
+    camera.look_at = Vec3::new(278.0, 278.0, 0.0);
+    camera.vup = Vec3::new(0.0, 1.0, 0.0);
+
+    camera.blur_strength = 0.5;
+    camera.focal_length = 10.0;
+    camera.defocus_angle = 0.0;
+
+    camera.environment = EnvironmentType::Color(Vec3::ZERO);
+
+    camera.init();
+    camera.render(&world, "demo/normals.png");
+}
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -521,15 +630,16 @@ fn main() {
     env::set_var("RUST_BACKTRACE", "full");
     let args = Args::parse();
     let quality = args.quality;
-    let (width, spp) = if quality { (1920, 4000) } else { (1920, 100) };
+    let (width, spp) = if quality { (1920, 4000) } else { (600, 100) };
 
     match args.scene {
         1 => balls_scene(width, spp),
         2 => earth_scene(width, spp),
         3 => cornell_box_scene(width, spp),
         4 => environment_map_scene(width, spp),
-        5 => bunny_scene(width, spp),
-        6 => my_scene(width, spp),
+        5 => bsdf_demo_scene(width, spp),
+        6 => everything_scene(width, spp),
+        7 => normal_demo_scene(width, spp),
         _ => (),
     }
 }

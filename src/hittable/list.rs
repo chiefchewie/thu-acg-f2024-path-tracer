@@ -76,6 +76,9 @@ impl Hittable for HittableList {
     }
 
     fn sample(&self, origin: Vec3, time: f64) -> Option<crate::vec3::Vec3> {
+        if self.is_empty() {
+            return None;
+        }
         let i = thread_rng().gen_range(0..self.objects.len());
         self.objects[i].sample(origin, time)
     }
