@@ -11,11 +11,19 @@ command line arguments
 `-s <scene>` pick the scene you would like to see. defaults to 1, which is the bouncing balls.
 
 ## demos:
-1. f bouncing balls demonstraing motion blur, textures. please edit main.rs to `x=1` and run. in the definition of `balls_scene`, can change the samples per pixel to 1000 to match demo
+1. bouncing balls demonstraing motion blur, textures. 
 
-2. cornell box. there may be some slight differences (perhaps cubes not spheres) due to me editing the code, but the general scene layout should remain similar. for this, edit `main.rs` to `x=5`. the scene is defined in `cornell_box_scene()`, and in there feel free to up the samples per pixel to 1000 or 5000 to match the demo. 
+2. scene showing image texture map and the depth of field effect
 
-3. earth image texture map: edit `main.rs` to `x=2`.
+3. cornell box
+
+4. very simple demo of a specular sphere showing HDR skylight environment map
+
+5. Principled BSDF demo - these are all the same material, with varying roughness, metalness
+
+6. A scene I put together showing off as many things as I can think of, also loading of OBJ models. Notice the caustics caused by the environment lighting of the glass ball to the left!
+
+7. Cornell box showing the normal map implementation, the left wall is not using a normal map and the right wall is using a normal map, notice the shadows on the right side.
 
 I have kept the resolution of the demos fairly low for faster iteration.
 for all three demos, at 5000 samples per pixel it might take a while (up to 10 minutes on)
@@ -28,11 +36,7 @@ https://schuttejoe.github.io/post/disneybsdf/
 https://cseweb.ucsd.edu/~tzli/cse272/wi2023/homework1.pdf 
 https://blog.selfshadow.com/publications/s2012-shading-course/burley/s2012_pbs_disney_brdf_notes_v3.pdf 
 https://blog.selfshadow.com/publications/s2015-shading-course/burley/s2015_pbs_disney_bsdf_notes.pdf 
-
-I originally used this blog's implementation but have since moved on because I found it hard to make it work within my framework. I may come back to it for some of the optimized sampling procedures.
 https://boksajak.github.io/blog/BRDF 
-
-This link has an implementation, which I'm currently following for the overall layout. However, I plan to change it because there are some things that I don't like about it, such as how they are determining the lobe probabilities, some of the conditions for evaluating each lobe, and I think the sampling procedures can be optimized which I'd like to do. I'd like to acknowledge that my final implementation might still end up similar to this, since we're both implementing the same thing (Disney BRDF) at the end of the day.
 https://github.com/knightcrawler25/GLSL-PathTracer/blob/master/src/shaders/common/disney.glsl 
 
 For help understanding importance sampling and multiple importance sampling
