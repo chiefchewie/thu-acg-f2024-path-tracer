@@ -12,18 +12,25 @@ command line arguments
 
 ## demos:
 1. bouncing balls demonstraing motion blur, textures. 
+![balls](https://raw.githubusercontent.com/chiefchewie/thu-acg-f2024-path-tracer/refs/heads/main/demo/balls.png)
 
 2. scene showing image texture map and the depth of field effect
+![dof](https://raw.githubusercontent.com/chiefchewie/thu-acg-f2024-path-tracer/refs/heads/main/demo/earth.png)
 
 3. cornell box
+![box](https://github.com/chiefchewie/thu-acg-f2024-path-tracer/blob/main/demo/cornell.png?raw=true)
 
 4. very simple demo of a specular sphere showing HDR skylight environment map
+![envmap](https://github.com/chiefchewie/thu-acg-f2024-path-tracer/blob/main/demo/lights.png?raw=true)
 
 5. Principled BSDF demo - these are all the same material, with varying roughness, metalness
+![bsdf](https://raw.githubusercontent.com/chiefchewie/thu-acg-f2024-path-tracer/refs/heads/main/demo/bsdf.png)
 
 6. A scene I put together showing off as many things as I can think of, also loading of OBJ models. Notice the caustics caused by the environment lighting of the glass ball to the left!
+![scene](https://github.com/chiefchewie/thu-acg-f2024-path-tracer/blob/main/demo/scene6.png?raw=true)
 
 7. Cornell box showing the normal map implementation, the left wall is not using a normal map and the right wall is using a normal map, notice the shadows on the right side.
+![normal](https://github.com/chiefchewie/thu-acg-f2024-path-tracer/blob/main/demo/normals.png?raw=true)
 
 # resources/code referenced:
 Ray Tracing in One Weekend for the initial framework
